@@ -2,7 +2,6 @@ from .models import *
 from rest_framework import viewsets, permissions
 from .serializers import *
 
-
 class UsuarioViewSet(viewsets.ModelViewSet):
     queryset = Usuario.objects.all()
     permission_classes = [permissions.AllowAny]    # <---- El "AllowAny" luego hay que cambiarlo, una vez hecho el sistema de inicio de sesión
