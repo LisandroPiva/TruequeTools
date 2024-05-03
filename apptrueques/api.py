@@ -1,6 +1,8 @@
 from .models import *
 from rest_framework import viewsets, permissions
 from .serializers import *
+from .views import RegisterView
+
 
 class UsuarioViewSet(viewsets.ModelViewSet):
     queryset = Usuario.objects.all()
@@ -24,5 +26,8 @@ class ComentarioViewSet(viewsets.ModelViewSet):
 
 class SucursalViewSet(viewsets.ModelViewSet):
     queryset = Sucursal.objects.all()
-    permission_classes = [permissions.AllowAny]    
+    permission_classes = [permissions.AllowAny]     
     serializer_class = SucursalSerializer
+
+        
+     
