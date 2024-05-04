@@ -1,7 +1,7 @@
 from .models import *
 from rest_framework import viewsets, permissions
 from .serializers import *
-from .views import RegisterView
+
 
 
 class UsuarioViewSet(viewsets.ModelViewSet):

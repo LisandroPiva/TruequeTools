@@ -4,8 +4,9 @@ from .models import *
 class UsuarioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuario
-        fields = ('id', 'nombre', 'email', 'password', 'reputacion', 'fecha_de_nacimiento', 'sucursal_favorita')
+        fields = ['email', 'username', 'password', 'reputacion', 'fecha_de_nacimiento', 'sucursal_favorita']
         read_only_fields = ('reputacion', )
+        extra_kwargs = {'password': {'write_only': True}}
 
 class SucursalSerializer(serializers.ModelSerializer):
     class Meta:

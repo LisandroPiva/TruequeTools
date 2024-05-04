@@ -15,4 +15,5 @@ router.register('sucursales', SucursalViewSet, 'sucursales')
 urlpatterns = [
     path('api/', include(router.urls)),
     path('api/register/', RegisterView.as_view(), name='register'),
+    path('api/login/', LoginView.as_view(), name='login'),
 ]
