@@ -43,7 +43,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('fecha_de_nacimiento', models.DateField(auto_created=True)),
-                ('nombre', models.CharField(max_length=100)),
+                ('username', models.CharField(default='user_default', max_length=150, verbose_name='username', unique=False)),
                 ('email', models.EmailField(max_length=254, unique=True)),
                 ('password', models.CharField(max_length=50)),
                 ('reputacion', models.IntegerField()),
