@@ -8,15 +8,22 @@ class UsuarioSerializer(serializers.ModelSerializer):
         read_only_fields = ('reputacion', )
         extra_kwargs = {'password': {'write_only': True}}
 
+
 class SucursalSerializer(serializers.ModelSerializer):
     class Meta:
         model = Sucursal
         fields = ('id', 'nombre', 'direccion')
 
+
+class CategoriaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Categoria
+        fields = ('id', 'nombre')
+
 class PublicacionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Publicacion
-        fields = ('id', 'usuario_propietario', 'titulo', 'fecha', 'descripcion', 'imagen')
+        fields = ('id', 'usuario_propietario', 'titulo', 'fecha', 'descripcion', 'categoria', 'imagen')
         read_only_fields=('fecha',  )
 
 class SolicitudSerializer(serializers.ModelSerializer):
