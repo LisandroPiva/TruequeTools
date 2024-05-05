@@ -11,9 +11,12 @@ router.register('publicaciones', PublicacionViewSet, 'publicaciones')
 router.register('comentarios', ComentarioViewSet, 'comentarios')
 router.register('solicitudes', SolicitudViewSet, 'solicitudes')
 router.register('sucursales', SucursalViewSet, 'sucursales')
+router.register('categorias', CategoriaViewSet, 'categorias')
 
 urlpatterns = [
     path('api/', include(router.urls)),
     path('api/register/', RegisterView.as_view(), name='register'),
     path('api/login/', LoginView.as_view(), name='login'),
+    path('api/profile', ProfileView.as_view(), name='profile'),
+    path('api/createPost', CreatePostView.as_view(), name='createpost')
 ]

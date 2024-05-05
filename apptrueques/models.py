@@ -19,12 +19,17 @@ class Usuario(AbstractUser):
     def __str__(self):
         return self.username
     
+class Categoria(models.Model):
+    nombre = models.CharField(max_length=100)
+    def __str__(self):
+        return self.nombre
 
 class Publicacion(models.Model):
     usuario_propietario = models.ForeignKey(Usuario, related_name="publicaciones", on_delete=models.CASCADE)
     titulo = models.CharField(max_length=100)
     fecha = models.DateField(auto_now_add=True)
     descripcion = models.TextField()
+    categoria = models.ForeignKey(Categoria, on_delete=models.CASCADE)
     imagen = models.ImageField(null=True, blank=True)
     def __str__(self):
         return self.titulo
