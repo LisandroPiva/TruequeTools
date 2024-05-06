@@ -2,6 +2,8 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
+
+
 class Sucursal(models.Model):
     nombre = models.CharField(max_length=100)
     direccion = models.CharField(max_length=200)
@@ -31,6 +33,13 @@ class Publicacion(models.Model):
     descripcion = models.TextField()
     categoria = models.ForeignKey(Categoria, on_delete=models.CASCADE)
     imagen = models.ImageField(null=True, blank=True)
+    ESTADO_CHOICES = (
+        ('PUBLICADA', 'Publicada'),
+        ('PENDIENTE', 'Pendiente'),
+        ('EXITOSA', 'Exitosa'),
+        ('FALLIDA', 'Fallida'),
+    )
+    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='PUBLICADA')
     def __str__(self):
         return self.titulo
     # sucursal destino?
@@ -40,9 +49,18 @@ class Comentario(models.Model):
     fecha = models.DateField(auto_now_add=True)
     publicacion = models.ForeignKey(Publicacion, related_name="comentarios", on_delete=models.CASCADE)
     usuario_propietario = models.ForeignKey(Usuario, related_name="comentarios", on_delete=models.CASCADE)
-    respuesta = models.ForeignKey('self', related_name='respuestas', on_delete=models.CASCADE, null=True, blank=True)
     def __str__(self):
         return self.usuario_propietario.username
+    
+class ComentarioRespuesta(models.Model):
+    contenido = models.TextField()
+    fecha = models.DateField(auto_now_add=True)
+    usuario_propietario = models.ForeignKey(Usuario, related_name="respuestas_publicadas", on_delete=models.CASCADE)
+    comentario_original = models.ForeignKey(Comentario, related_name="respuestas", on_delete=models.CASCADE)
+    def __str__(self):
+        return self.usuario_propietario.username
+
+
 
 class Solicitud(models.Model):
     publicacion_deseada = models.ForeignKey(Publicacion, related_name='solicitudes_recibidas', on_delete=models.CASCADE)
