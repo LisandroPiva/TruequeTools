@@ -1,7 +1,9 @@
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_201_CREATED, HTTP_200_OK, HTTP_404_NOT_FOUND
+from rest_framework.exceptions import NotFound
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from django.shortcuts import get_object_or_404
 from .serializers import *
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
@@ -63,21 +65,59 @@ class CreatePostView(APIView):
         request.data['usuario_propietario'] = request.user.id
         serializer = PublicacionSerializer(data=request.data)
         if serializer.is_valid():
+            request.data['estado'] = 'PUBLICADA'
             serializer.save()  
-            return Response({"publicacion": serializer.data}, status=HTTP_201_CREATED)
+            return Response({"publicacion publicada con éxito": serializer.data}, status=HTTP_201_CREATED)
         else:
             return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
+        
+
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+class CreateCommentView(APIView):
+    def post(self, request, publicacion_id):
+        try:
+            publicacion = get_object_or_404(Publicacion, pk=publicacion_id)
+        except Publicacion.DoesNotExist:
+            return Response({"detail": "La publicación que deseas comentar ya no está disponible"}, status=HTTP_404_NOT_FOUND)
+        
+        request.data['usuario_propietario'] = request.user.id
+        request.data['publicacion'] = publicacion_id 
+        serializer = ComentarioSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()  
+            return Response({"detail": "Comentario publicado con éxito", "comentario": serializer.data}, status=HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
+        
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+class CreateReplyView(APIView):
+    def post(self, request, publicacion_id, comentario_id):
+        try:
+            publicacion = get_object_or_404(Publicacion, pk=publicacion_id)
+            comentario_original = get_object_or_404(Comentario, pk=comentario_id)
+        except Comentario.DoesNotExist:
+            return Response({"detail": "El comentario que deseas responder ya no está disponible"}, status=HTTP_404_NOT_FOUND)
+        
+        request.data['usuario_propietario'] = request.user.id
+        request.data['comentario_original'] = comentario_id
+        serializer = ComentarioRespuestaSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()  
+            return Response({"detail": "Respuesta enviada con éxito", "respuesta": serializer.data}, status=HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
+
 
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 class PostDetailView(APIView):
-    def get_post(self, publicacion_id):
-        try:
-            return Publicacion.objects.get(pk=publicacion_id)
-        except Publicacion.DoesNotExist:
-            raise HTTP_404_NOT_FOUND
-        
     def get(self, request, publicacion_id):
-        publicacion = self.get_post(publicacion_id)
-        serializer = PublicacionSerializer(publicacion)
-        return Response(serializer.data, status=HTTP_200_OK)
+        try:
+            publicacion = Publicacion.objects.get(pk=publicacion_id)
+            serializer = PublicacionSerializer(publicacion)
+            return Response(serializer.data, status=HTTP_200_OK)
+        except Publicacion.DoesNotExist:
+            raise NotFound("La publicación no existe")
+    

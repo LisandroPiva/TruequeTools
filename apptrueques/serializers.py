@@ -4,7 +4,7 @@ from .models import *
 class UsuarioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuario
-        fields = ['email', 'username', 'password', 'reputacion', 'fecha_de_nacimiento', 'sucursal_favorita']
+        fields = ('id', 'username', 'email', 'fecha_de_nacimiento', 'sucursal_favorita', 'reputacion')
         read_only_fields = ('reputacion', )
         extra_kwargs = {'password': {'write_only': True}}
 
@@ -12,29 +12,37 @@ class UsuarioSerializer(serializers.ModelSerializer):
 class SucursalSerializer(serializers.ModelSerializer):
     class Meta:
         model = Sucursal
-        fields = ('id', 'nombre', 'direccion')
+        fields = '__all__'
 
 
 class CategoriaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Categoria
-        fields = ('id', 'nombre')
+        fields = '__all__'
 
-class PublicacionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Publicacion
-        fields = ('id', 'usuario_propietario', 'titulo', 'fecha', 'descripcion', 'categoria', 'imagen')
-        read_only_fields=('fecha',  )
 
 class SolicitudSerializer(serializers.ModelSerializer):
     class Meta:
         model = Solicitud
-        fields = ('id', 'publicacion_deseada','publicacion_a_intercambiar','fecha' )
+        fields = '__all__'
+        read_only_fields = ('fecha', )
+
+class ComentarioRespuestaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ComentarioRespuesta
+        fields = '__all__'
         read_only_fields = ('fecha', )
 
 class ComentarioSerializer(serializers.ModelSerializer):
+    respuestas = ComentarioRespuestaSerializer(many=True, read_only=True)
     class Meta:
         model = Comentario
-        fields = ('id', 'contenido', 'fecha', 'publicacion', 'usuario_propietario', 'respuesta')
-        read_only_fields = ('fecha', )
+        fields = '__all__'
+        read_only_fields = ('fecha',  )
 
+class PublicacionSerializer(serializers.ModelSerializer):   
+    comentarios = ComentarioSerializer(many=True, read_only=True)
+    class Meta:
+        model = Publicacion
+        fields = '__all__'
+        read_only_fields=('fecha', 'estado', )
