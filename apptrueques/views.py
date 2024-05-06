@@ -1,9 +1,10 @@
 from rest_framework.response import Response
-from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_201_CREATED, HTTP_200_OK
+from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_201_CREATED, HTTP_200_OK, HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from .serializers import *
 from rest_framework.authtoken.models import Token
+from rest_framework.authtoken.views import ObtainAuthToken
 from .models import Usuario
 from django.contrib.auth import authenticate
 from rest_framework.authentication import TokenAuthentication
@@ -66,3 +67,17 @@ class CreatePostView(APIView):
             return Response({"publicacion": serializer.data}, status=HTTP_201_CREATED)
         else:
             return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
+
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+class PostDetailView(APIView):
+    def get_post(self, publicacion_id):
+        try:
+            return Publicacion.objects.get(pk=publicacion_id)
+        except Publicacion.DoesNotExist:
+            raise HTTP_404_NOT_FOUND
+        
+    def get(self, request, publicacion_id):
+        publicacion = self.get_post(publicacion_id)
+        serializer = PublicacionSerializer(publicacion)
+        return Response(serializer.data, status=HTTP_200_OK)

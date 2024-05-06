@@ -18,5 +18,6 @@ urlpatterns = [
     path('api/register/', RegisterView.as_view(), name='register'),
     path('api/login/', LoginView.as_view(), name='login'),
     path('api/profile', ProfileView.as_view(), name='profile'),
-    path('api/createPost', CreatePostView.as_view(), name='createpost')
+    path('api/createPost', CreatePostView.as_view(), name='createpost'),
+    path('api/post/<int:publicacion_id>/', PostDetailView.as_view(), name='detalle_publicacion')
 ]
