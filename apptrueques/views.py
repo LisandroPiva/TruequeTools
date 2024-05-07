@@ -6,7 +6,6 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.shortcuts import get_object_or_404
 from .serializers import *
 from rest_framework.authtoken.models import Token
-from rest_framework.authtoken.views import ObtainAuthToken
 from .models import Usuario
 from django.contrib.auth import authenticate
 from rest_framework.authentication import TokenAuthentication
@@ -17,17 +16,19 @@ class RegisterView(APIView):
     def post(self, request):
         serializer = UsuarioSerializer(data=request.data)
         if serializer.is_valid():
+            sucursal = get_object_or_404(Sucursal, pk=request.data['sucursal_favorita'])
             usuario = Usuario.objects.create_user(
                 username=request.data['username'],
                 email=request.data['email'],
                 password=request.data['password'],
                 fecha_de_nacimiento=request.data['fecha_de_nacimiento'],
-                sucursal_favorita=request.data['sucursal_favorita']
+                sucursal_favorita=sucursal  
             )
-            token, created = Token.objects.get_or_create(user=usuario)       
+            token, created = Token.objects.get_or_create(user=usuario)
             response_data = {
                 'token': token.key,
-                'user': serializer.validated_data 
+                'user': serializer.validated_data,
+                'sucursal favorita':sucursal.nombre
             }
             
             return Response(response_data, status=HTTP_201_CREATED)
@@ -40,9 +41,7 @@ class LoginView(APIView):
     def post(self, request):
         email = request.data['email']
         password = request.data['password']
-        user = authenticate(request, email=email, password=password)
-        print(user)
-        
+        user = authenticate(request, email=email, password=password)        
         if user is None:
             return Response({"error": "invalid credentials"}, status=HTTP_400_BAD_REQUEST)
         token, created = Token.objects.get_or_create(user=user)
@@ -80,12 +79,9 @@ class CreateCommentView(APIView):
             publicacion = get_object_or_404(Publicacion, pk=publicacion_id)
         except Publicacion.DoesNotExist:
             return Response({"detail": "La publicación que deseas comentar ya no está disponible"}, status=HTTP_404_NOT_FOUND)
-        
-        request.data['usuario_propietario'] = request.user.id
-        request.data['publicacion'] = publicacion_id 
         serializer = ComentarioSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()  
+            serializer.save(publicacion=publicacion, usuario_propietario=request.user)  
             return Response({"detail": "Comentario publicado con éxito", "comentario": serializer.data}, status=HTTP_201_CREATED)
         else:
             return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
