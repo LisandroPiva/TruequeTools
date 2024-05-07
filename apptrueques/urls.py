@@ -21,7 +21,7 @@ urlpatterns = [
     path('api/profile', ProfileView.as_view(), name='profile'),
     path('api/createPost', CreatePostView.as_view(), name='createpost'),
     path('api/post/<int:publicacion_id>/', PostDetailView.as_view(), name='post_detail'),
-    path('api/post/<int:publicacion_id>/post_comment', CreateCommentView.as_view(), name='post_comment'),
+    path('api/post/<int:publicacion_id>/comments', CreateCommentView.as_view(), name='post_comment'),
     path('api/post/<int:publicacion_id>/comments/<int:comentario_id>', CreateReplyView.as_view(), name='post_reply')
 
 ]

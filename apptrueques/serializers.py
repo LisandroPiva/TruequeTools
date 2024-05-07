@@ -1,19 +1,18 @@
 from rest_framework import serializers
 from .models import *
 
-class UsuarioSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Usuario
-        fields = ('id', 'username', 'email', 'fecha_de_nacimiento', 'sucursal_favorita', 'reputacion')
-        read_only_fields = ('reputacion', )
-        extra_kwargs = {'password': {'write_only': True}}
-
-
 class SucursalSerializer(serializers.ModelSerializer):
     class Meta:
         model = Sucursal
         fields = '__all__'
 
+class UsuarioSerializer(serializers.ModelSerializer):
+    sucursal_favorita = SucursalSerializer(read_only=True)    
+    class Meta:
+        model = Usuario
+        fields = ('id', 'username', 'email', 'fecha_de_nacimiento', 'sucursal_favorita', 'reputacion')
+        read_only_fields = ('reputacion', )
+        extra_kwargs = {'password': {'write_only': True}}
 
 class CategoriaSerializer(serializers.ModelSerializer):
     class Meta:
@@ -34,11 +33,12 @@ class ComentarioRespuestaSerializer(serializers.ModelSerializer):
         read_only_fields = ('fecha', )
 
 class ComentarioSerializer(serializers.ModelSerializer):
-    respuestas = ComentarioRespuestaSerializer(many=True, read_only=True)
+    respuesta = ComentarioRespuestaSerializer(read_only=True)
+    usuario_propietario = UsuarioSerializer(read_only=True)
     class Meta:
         model = Comentario
-        fields = '__all__'
-        read_only_fields = ('fecha',  )
+        fields = ('id', 'fecha', 'contenido', 'respuesta', 'publicacion_id', 'usuario_propietario')
+        read_only_fields = ('fecha', )
 
 class PublicacionSerializer(serializers.ModelSerializer):   
     comentarios = ComentarioSerializer(many=True, read_only=True)
