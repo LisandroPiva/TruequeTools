@@ -1,5 +1,5 @@
 from rest_framework.response import Response
-from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_201_CREATED, HTTP_200_OK, HTTP_404_NOT_FOUND
+from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_201_CREATED, HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_403_FORBIDDEN
 from rest_framework.exceptions import NotFound
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -91,13 +91,19 @@ class CreateCommentView(APIView):
 class CreateReplyView(APIView):
     def post(self, request, publicacion_id, comentario_id):
         try:
-            publicacion = get_object_or_404(Publicacion, pk=publicacion_id)
             comentario_original = get_object_or_404(Comentario, pk=comentario_id)
         except Comentario.DoesNotExist:
-            return Response({"detail": "El comentario que deseas responder ya no está disponible"}, status=HTTP_404_NOT_FOUND)
+            return Response({"detail": "el comentario que deseas responder ya no está disponible"}, status=HTTP_404_NOT_FOUND)
+        try:
+            publicacion = get_object_or_404(Publicacion, pk=publicacion_id)
+        except Publicacion.DoesNotExist:
+            return Response({"detail": "la publicacion ya no está disponible"}, status=HTTP_404_NOT_FOUND)
         
+        if publicacion.usuario_propietario.id != request.user.id:
+            return Response({"detail": "Solo el propietario de la publicación puede responder a los comentarios"}, status=HTTP_403_FORBIDDEN)
+
         request.data['usuario_propietario'] = request.user.id
-        request.data['comentario_original'] = comentario_id
+
         serializer = ComentarioRespuestaSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()  
