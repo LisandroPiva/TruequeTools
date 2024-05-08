@@ -61,13 +61,13 @@ class ProfileView(APIView):
 @permission_classes([IsAuthenticated])
 class CreatePostView(APIView):
     def post(self, request):
-        request.data['usuario_propietario'] = request.user.id
         serializer = PublicacionSerializer(data=request.data)
         if serializer.is_valid():
             request.data['estado'] = 'PUBLICADA'
-            serializer.save()  
+            serializer.save(usuario_propietario=request.user)  
             return Response({"publicacion publicada con éxito": serializer.data}, status=HTTP_201_CREATED)
         else:
+            print(serializer.errors)
             return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
         
 
@@ -99,13 +99,18 @@ class CreateReplyView(APIView):
         except Publicacion.DoesNotExist:
             return Response({"detail": "la publicacion ya no está disponible"}, status=HTTP_404_NOT_FOUND)
         
+        print(comentario_original.getReply())
+
         if publicacion.usuario_propietario.id != request.user.id:
             return Response({"detail": "Solo el propietario de la publicación puede responder a los comentarios"}, status=HTTP_403_FORBIDDEN)
-
+        
         request.data['usuario_propietario'] = request.user.id
-
+        
         serializer = ComentarioRespuestaSerializer(data=request.data)
         if serializer.is_valid():
+            respuesta = serializer.save()
+            comentario_original.respuesta = respuesta
+            comentario_original.save()
             serializer.save()  
             return Response({"detail": "Respuesta enviada con éxito", "respuesta": serializer.data}, status=HTTP_201_CREATED)
         else:

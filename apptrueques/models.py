@@ -63,6 +63,9 @@ class Comentario(models.Model):
 
     def __str__(self):
         return f"Comentario de {self.usuario_propietario.username}"
+    
+    def getReply(self):
+        return self.respuesta
 
 
 class Solicitud(models.Model):
