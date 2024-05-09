@@ -47,3 +47,4 @@ class PublicacionSerializer(serializers.ModelSerializer):
         model = Publicacion
         fields = '__all__'
         read_only_fields=('fecha', 'estado', )
+    
