@@ -1,5 +1,5 @@
 from rest_framework.response import Response
-from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_201_CREATED, HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_403_FORBIDDEN
+from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_201_CREATED, HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_403_FORBIDDEN, HTTP_406_NOT_ACCEPTABLE
 from rest_framework.exceptions import NotFound
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -10,30 +10,46 @@ from .models import Usuario
 from django.contrib.auth import authenticate
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.decorators import authentication_classes, permission_classes
+from datetime import datetime
+
+from rest_framework.exceptions import ValidationError
 
 @permission_classes([AllowAny])
 class RegisterView(APIView):
     def post(self, request):
         serializer = UsuarioSerializer(data=request.data)
+        print(request.data)
         if serializer.is_valid():
-            sucursal = get_object_or_404(Sucursal, pk=request.data['sucursal_favorita'])
-            usuario = Usuario.objects.create_user(
-                username=request.data['username'],
-                email=request.data['email'],
-                password=request.data['password'],
-                fecha_de_nacimiento=request.data['fecha_de_nacimiento'],
-                sucursal_favorita=sucursal  
-            )
-            token, created = Token.objects.get_or_create(user=usuario)
-            response_data = {
-                'token': token.key,
-                'user': serializer.validated_data,
-                'sucursal favorita':sucursal.nombre
-            }
-            
-            return Response(response_data, status=HTTP_201_CREATED)
+            try:
+                sucursal = get_object_or_404(Sucursal, pk=request.data['sucursal_favorita'])
+                fecha_nacimiento = request.data['fecha_de_nacimiento']
+                fecha_nacimiento = datetime.strptime(fecha_nacimiento, '%Y-%m-%d').date()
+                fecha_actual = datetime.now().date()
+                edad = fecha_actual.year - fecha_nacimiento.year - ((fecha_actual.month, fecha_actual.day) < (fecha_nacimiento.month, fecha_nacimiento.day))
+                print(edad)
+                if (edad < 18):
+                    return Response({"error":"Para registrarse en el sistema debe ser mayor de edad"}, status=HTTP_406_NOT_ACCEPTABLE)
+
+                usuario = Usuario.objects.create_user(
+                    username=request.data['username'],
+                    email=request.data['email'],
+                    password=request.data['password'],
+                    fecha_de_nacimiento=request.data['fecha_de_nacimiento'],
+                    sucursal_favorita=sucursal  
+                )
+                token, created = Token.objects.get_or_create(user=usuario)
+                response_data = {
+                    'token': token.key,
+                    'user': serializer.validated_data,
+                    'sucursal favorita':sucursal.nombre
+                }
+                return Response(response_data, status=HTTP_201_CREATED)
+            except ValidationError as e:
+                return Response({'error': str(e)}, status=HTTP_400_BAD_REQUEST)
         else:
+            print(serializer.errors)
             return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
+
 
 
 @permission_classes([AllowAny])
