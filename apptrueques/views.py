@@ -30,12 +30,11 @@ class RegisterView(APIView):
                 edad = fecha_actual.year - fecha_nacimiento.year - ((fecha_actual.month, fecha_actual.day) < (fecha_nacimiento.month, fecha_nacimiento.day))
                 if (edad < 18):
                     return Response({"error": "Para registrarse en el sistema debe ser mayor de edad"}, status=HTTP_406_NOT_ACCEPTABLE)
-                # Corrected line: Assign the parsed date explicitly
                 usuario = Usuario.objects.create_user(
                     username=request.data['username'],
                     email=request.data['email'],
                     password=request.data['password'],
-                    fecha_de_nacimiento=fecha_nacimiento,  # Assign parsed date
+                    fecha_de_nacimiento=request.data['fecha_de_nacimiento'],  
                     sucursal_favorita=sucursal
                 )
                 token, created = Token.objects.get_or_create(user=usuario)

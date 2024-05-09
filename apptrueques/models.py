@@ -10,7 +10,7 @@ class Sucursal(models.Model):
 
 class Usuario(AbstractUser):
     reputacion = models.IntegerField(null=True, default=0)
-    fecha_de_nacimiento = models.DateField(auto_now_add=True)
+    fecha_de_nacimiento = models.DateField()
     sucursal_favorita = models.ForeignKey(Sucursal, related_name="usuarios", on_delete=models.CASCADE)
     username = models.CharField(max_length=150, unique=False)
     email = models.EmailField(unique=True)
