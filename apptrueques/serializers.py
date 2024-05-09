@@ -1,32 +1,50 @@
 from rest_framework import serializers
 from .models import *
 
-class UsuarioSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Usuario
-        fields = ('id', 'nombre', 'email', 'password', 'reputacion', 'fecha_de_nacimiento', 'sucursal_favorita')
-        read_only_fields = ('reputacion', )
-
 class SucursalSerializer(serializers.ModelSerializer):
     class Meta:
         model = Sucursal
-        fields = ('id', 'nombre', 'direccion')
+        fields = '__all__'
 
-class PublicacionSerializer(serializers.ModelSerializer):
+class UsuarioSerializer(serializers.ModelSerializer):
+    sucursal_favorita = SucursalSerializer(read_only=True)    
     class Meta:
-        model = Publicacion
-        fields = ('id', 'usuario_propietario', 'titulo', 'fecha', 'descripcion', 'imagen')
-        read_only_fields=('fecha',  )
+        model = Usuario
+        fields = ('id', 'username', 'email', 'fecha_de_nacimiento', 'sucursal_favorita', 'reputacion')
+        read_only_fields = ('reputacion', )
+        extra_kwargs = {'password': {'write_only': True}}
+
+class CategoriaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Categoria
+        fields = '__all__'
+
 
 class SolicitudSerializer(serializers.ModelSerializer):
     class Meta:
         model = Solicitud
-        fields = ('id', 'publicacion_deseada','publicacion_a_intercambiar','fecha' )
+        fields = '__all__'
+        read_only_fields = ('fecha', )
+
+class ComentarioRespuestaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ComentarioRespuesta
+        fields = '__all__'
         read_only_fields = ('fecha', )
 
 class ComentarioSerializer(serializers.ModelSerializer):
+    respuesta = ComentarioRespuestaSerializer(read_only=True)
+    usuario_propietario = UsuarioSerializer(read_only=True)
     class Meta:
         model = Comentario
-        fields = ('id', 'contenido', 'fecha', 'publicacion', 'usuario_propietario', 'respuesta')
+        fields = ('id', 'fecha', 'contenido', 'respuesta', 'publicacion_id', 'usuario_propietario')
         read_only_fields = ('fecha', )
 
+class PublicacionSerializer(serializers.ModelSerializer):   
+    comentarios = ComentarioSerializer(many=True, read_only=True)
+    usuario_propietario = UsuarioSerializer(read_only=True)
+    class Meta:
+        model = Publicacion
+        fields = '__all__'
+        read_only_fields=('fecha', 'estado', )
+    
