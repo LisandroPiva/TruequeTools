@@ -24,6 +24,7 @@ class RegisterView(APIView):
             return Response({"error": "El correo electrónico ya está en uso"}, status=HTTP_409_CONFLICT)
         if serializer.is_valid():
             try:
+                print("hola")
                 sucursal = get_object_or_404(Sucursal, pk=request.data['sucursal_favorita'])
                 fecha_nacimiento = datetime.strptime(request.data['fecha_de_nacimiento'], '%Y-%m-%d').date()
                 fecha_actual = datetime.now().date()
