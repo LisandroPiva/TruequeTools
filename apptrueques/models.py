@@ -31,7 +31,7 @@ class Publicacion(models.Model):
     descripcion = models.TextField()
     categoria = models.ForeignKey(Categoria, on_delete=models.CASCADE)
     sucursal_destino = models.ForeignKey(Sucursal, related_name="publicaciones", on_delete=models.CASCADE, blank=True, null=True)
-    imagen = models.ImageField(null=True, blank=True)
+    imagen = models.ImageField(upload_to="images", null=True, blank=True)
     ESTADO_CHOICES = (
         ('PUBLICADA', 'Publicada'),
         ('PENDIENTE', 'Pendiente'),
