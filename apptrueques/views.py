@@ -82,7 +82,7 @@ class CreatePostView(APIView):
         serializer = PublicacionSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save(usuario_propietario=request.user)  
-            return Response({"publicacion publicada con éxito": serializer.data}, status=HTTP_201_CREATED)
+            return Response(serializer.data, status=HTTP_201_CREATED)
         else:
             print(serializer.errors)
             return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
@@ -99,7 +99,7 @@ class CreateCommentView(APIView):
         serializer = ComentarioSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save(publicacion=publicacion, usuario_propietario=request.user)  
-            return Response({"detail": "Comentario publicado con éxito", "comentario": serializer.data}, status=HTTP_201_CREATED)
+            return Response(serializer.data, status=HTTP_201_CREATED)
         else:
             return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
         
@@ -129,19 +129,20 @@ class CreateReplyView(APIView):
             comentario_original.respuesta = respuesta
             comentario_original.save()
             serializer.save()  
-            return Response({"detail": "Respuesta enviada con éxito", "respuesta": serializer.data}, status=HTTP_201_CREATED)
+            return Response(serializer.data, status=HTTP_201_CREATED)
         else:
             return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
-
 
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 class PostDetailView(APIView):
     def get(self, request, publicacion_id):
+        print(request)
+        print("AAAAAAAAA", publicacion_id)
         try:
             publicacion = Publicacion.objects.get(pk=publicacion_id)
             serializer = PublicacionSerializer(publicacion)
             return Response(serializer.data, status=HTTP_200_OK)
         except Publicacion.DoesNotExist:
-            raise NotFound("La publicación no existe")
+            return Response({"detail": "La publicación que deseas ver no está disponible"}, status=HTTP_404_NOT_FOUND)
     
