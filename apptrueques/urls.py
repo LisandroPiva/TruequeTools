@@ -3,6 +3,9 @@ from rest_framework.urls import path
 from django.urls import include
 from .api import *
 from .views import *
+from django.conf import settings
+from django.conf.urls.static import static
+
 
 router = routers.DefaultRouter()
 
@@ -24,4 +27,4 @@ urlpatterns = [
     path('api/post/<int:publicacion_id>/comments/', CreateCommentView.as_view(), name='post_comment'),
     path('api/post/<int:publicacion_id>/comments/<int:comentario_id>/', CreateReplyView.as_view(), name='post_reply')
 
-]
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
