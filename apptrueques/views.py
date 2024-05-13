@@ -1,6 +1,5 @@
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_201_CREATED, HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_403_FORBIDDEN, HTTP_406_NOT_ACCEPTABLE, HTTP_409_CONFLICT
-from rest_framework.exceptions import NotFound
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.shortcuts import get_object_or_404
@@ -12,7 +11,6 @@ from rest_framework.authentication import TokenAuthentication
 from rest_framework.decorators import authentication_classes, permission_classes
 from datetime import datetime
 from rest_framework.exceptions import ValidationError
-
 
 
 @permission_classes([AllowAny])
@@ -53,13 +51,12 @@ class RegisterView(APIView):
             return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
 
 
-
 @permission_classes([AllowAny])
 class LoginView(APIView):
     def post(self, request):
         email = request.data['email']
         password = request.data['password']
-        user = authenticate(request, email=email, password=password)        
+        user = authenticate(request, email=email, password=password)      
         if user is None:
             return Response({"error": "invalid credentials"}, status=HTTP_400_BAD_REQUEST)
         token, created = Token.objects.get_or_create(user=user)
@@ -146,3 +143,10 @@ class PostDetailView(APIView):
         except Publicacion.DoesNotExist:
             return Response({"detail": "La publicación que deseas ver no está disponible"}, status=HTTP_404_NOT_FOUND)
     
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+class UserInfoView(APIView):
+     def get(self, request):
+        user = request.user
+        serializer = UsuarioSerializer(user)
+        return Response(serializer.data)

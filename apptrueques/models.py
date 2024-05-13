@@ -11,11 +11,12 @@ class Sucursal(models.Model):
 class Usuario(AbstractUser):
     reputacion = models.IntegerField(null=True, default=0)
     fecha_de_nacimiento = models.DateField()
-    sucursal_favorita = models.ForeignKey(Sucursal, related_name="usuarios", on_delete=models.CASCADE)
+    sucursal_favorita = models.ForeignKey(Sucursal, related_name="usuarios", on_delete=models.CASCADE, null=True)
     username = models.CharField(max_length=150, unique=False)
     email = models.EmailField(unique=True)
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['username', 'password', 'fecha_de_nacimiento', 'sucursal_favorita']
+    REQUIRED_FIELDS = ['username', 'password', 'fecha_de_nacimiento']
+
     def __str__(self):
         return self.username
     
