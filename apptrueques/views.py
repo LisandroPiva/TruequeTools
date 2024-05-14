@@ -113,8 +113,6 @@ class CreateReplyView(APIView):
         except Publicacion.DoesNotExist:
             return Response({"detail": "la publicacion ya no está disponible"}, status=HTTP_404_NOT_FOUND)
         
-        print(comentario_original.getReply())
-
         if publicacion.usuario_propietario.id != request.user.id:
             return Response({"detail": "Solo el propietario de la publicación puede responder a los comentarios"}, status=HTTP_403_FORBIDDEN)
         
@@ -150,3 +148,15 @@ class UserInfoView(APIView):
         user = request.user
         serializer = UsuarioSerializer(user)
         return Response(serializer.data)
+
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+class PostComments(APIView):
+    def get(self, request, publicacion_id):
+        try:
+            publicacion = get_object_or_404(Publicacion, pk=publicacion_id)
+        except Publicacion.DoesNotExist:
+            return Response({"detail": "La publicación no está disponible"}, status=HTTP_404_NOT_FOUND)
+        serializer = PublicacionSerializer(publicacion)
+        comentarios = serializer.get_comentarios(publicacion)
+        return Response(comentarios)

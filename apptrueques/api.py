@@ -13,7 +13,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
 class PublicacionViewSet(viewsets.ModelViewSet):
     queryset = Publicacion.objects.all()
     serializer_class = PublicacionSerializer
-    permission_classes = [permissions.IsAdminUser, permissions.IsAuthenticated]    
+    permission_classes = [permissions.IsAuthenticated]    
     authentication_classes = [TokenAuthentication]
 
 class SolicitudViewSet(viewsets.ModelViewSet):
