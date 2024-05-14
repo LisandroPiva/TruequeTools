@@ -48,3 +48,5 @@ class PublicacionSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields=('fecha', 'estado', )
     
+    def get_comentarios(self, publicacion):
+        return self.to_representation(publicacion)['comentarios']

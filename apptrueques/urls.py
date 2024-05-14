@@ -27,4 +27,5 @@ urlpatterns = [
     path('api/post/<int:publicacion_id>/', PostDetailView.as_view(), name='post_detail'),
     path('api/post/<int:publicacion_id>/comments/', CreateCommentView.as_view(), name='post_comment'),
     path('api/post/<int:publicacion_id>/comments/<int:comentario_id>/', CreateReplyView.as_view(), name='post_reply'),
+    path('api/post/<int:publicacion_id>/comments_list/', PostComments.as_view(), name="post_comments")
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
