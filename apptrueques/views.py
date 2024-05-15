@@ -18,17 +18,20 @@ class RegisterView(APIView):
     def post(self, request):
         serializer = UsuarioSerializer(data=request.data)
         print(request.data)
+        if len(request.data.get('password', '')) < 6:
+            return Response({"error": "La contraseña debe tener al menos 6 caracteres"}, status=HTTP_400_BAD_REQUEST)
         if Usuario.objects.filter(email=request.data['email']).exists():
             return Response({"error": "El correo electrónico ya está en uso"}, status=HTTP_409_CONFLICT)
         if serializer.is_valid():
             try:
-                print("hola")
+                
                 sucursal = get_object_or_404(Sucursal, pk=request.data['sucursal_favorita'])
                 fecha_nacimiento = datetime.strptime(request.data['fecha_de_nacimiento'], '%Y-%m-%d').date()
                 fecha_actual = datetime.now().date()
                 edad = fecha_actual.year - fecha_nacimiento.year - ((fecha_actual.month, fecha_actual.day) < (fecha_nacimiento.month, fecha_nacimiento.day))
                 if (edad < 18):
                     return Response({"error": "Para registrarse en el sistema debe ser mayor de edad"}, status=HTTP_406_NOT_ACCEPTABLE)
+                    
                 usuario = Usuario.objects.create_user(
                     username=request.data['username'],
                     email=request.data['email'],
@@ -77,6 +80,7 @@ class ProfileView(APIView):
 class CreatePostView(APIView):
     def post(self, request):
         serializer = PublicacionSerializer(data=request.data)
+        print("DATA", request.data)
         if serializer.is_valid():
             serializer.save(usuario_propietario=request.user)  
             return Response(serializer.data, status=HTTP_201_CREATED)

@@ -36,8 +36,7 @@ class ComentarioRespuestaViewSet(viewsets.ModelViewSet):
 
 class SucursalViewSet(viewsets.ModelViewSet):
     queryset = Sucursal.objects.all()
-    authentication_classes = [TokenAuthentication]
-    permission_classes = [permissions.IsAuthenticated]     
+    permission_classes = [permissions.AllowAny]     
     serializer_class = SucursalSerializer
 
 class CategoriaViewSet(viewsets.ModelViewSet):
