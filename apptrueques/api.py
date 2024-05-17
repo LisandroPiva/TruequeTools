@@ -41,8 +41,7 @@ class SucursalViewSet(viewsets.ModelViewSet):
 
 class CategoriaViewSet(viewsets.ModelViewSet):
     queryset = Categoria.objects.all()
-    permission_classes = [permissions.IsAuthenticated]    
-    authentication_classes = [TokenAuthentication] 
+    permission_classes = [permissions.AllowAny]    
     serializer_class = CategoriaSerializer
         
      
