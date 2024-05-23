@@ -10,7 +10,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     authentication_classes = [TokenAuthentication]
 
 class PublicacionViewSet(viewsets.ModelViewSet):
-    queryset = Publicacion.objects.all()
+    queryset = Publicacion.objects.all().order_by('-fecha')
     serializer_class = PublicacionSerializer
     permission_classes = [permissions.IsAuthenticated]    
     authentication_classes = [TokenAuthentication]

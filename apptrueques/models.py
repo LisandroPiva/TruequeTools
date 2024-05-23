@@ -43,7 +43,7 @@ class Categoria(models.Model):
 class Publicacion(models.Model):
     usuario_propietario = models.ForeignKey(Usuario, related_name="publicaciones", on_delete=models.CASCADE)
     titulo = models.CharField(max_length=100)
-    fecha = models.DateField(auto_now_add=True)
+    fecha = models.DateTimeField(auto_now_add=True)
     descripcion = models.TextField()
     categoria = models.ForeignKey(Categoria, on_delete=models.CASCADE)
     sucursal_destino = models.ForeignKey(Sucursal, related_name="publicaciones", on_delete=models.CASCADE, blank=True, null=True)
@@ -65,14 +65,14 @@ class Publicacion(models.Model):
 
 class ComentarioRespuesta(models.Model):
     contenido = models.TextField()
-    fecha = models.DateField(auto_now_add=True)
+    fecha = models.DateTimeField(auto_now_add=True)
     usuario_propietario = models.ForeignKey(Usuario, related_name="respuestas_publicadas", on_delete=models.CASCADE)
     def __str__(self):
         return f"Respuesta de {self.usuario_propietario.username}"
 
 class Comentario(models.Model):
     contenido = models.TextField()
-    fecha = models.DateField(auto_now_add=True)
+    fecha = models.DateTimeField(auto_now_add=True)
     publicacion = models.ForeignKey(Publicacion, related_name="comentarios", on_delete=models.CASCADE)
     usuario_propietario = models.ForeignKey(Usuario, related_name="comentarios", on_delete=models.CASCADE)
     respuesta = models.OneToOneField(ComentarioRespuesta, related_name='comentario', on_delete=models.SET_NULL, null=True)
@@ -87,7 +87,7 @@ class Comentario(models.Model):
 class Solicitud(models.Model):
     publicacion_deseada = models.ForeignKey(Publicacion, related_name='solicitudes_recibidas', on_delete=models.CASCADE)
     publicacion_a_intercambiar = models.ForeignKey(Publicacion, related_name='solicitudes_enviadas', on_delete=models.CASCADE)
-    fecha = models.DateField(auto_now_add=True)
+    fecha = models.DateTimeField(auto_now_add=True)
     def __str__(self):
         return self.publicacion_a_intercambiar.usuario_propietario
 

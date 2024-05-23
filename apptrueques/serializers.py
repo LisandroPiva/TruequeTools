@@ -52,6 +52,7 @@ class PublicacionSerializer(serializers.ModelSerializer):
     comentarios = ComentarioSerializer(many=True, read_only=True)
     sucursal_destino = SucursalSerializer(read_only=True)
     usuario_propietario = UsuarioSerializer(read_only=True)
+
     class Meta:
         model = Publicacion
         fields = '__all__'
@@ -59,3 +60,5 @@ class PublicacionSerializer(serializers.ModelSerializer):
     
     def get_comentarios(self, publicacion):
         return self.to_representation(publicacion)['comentarios']
+    
+
