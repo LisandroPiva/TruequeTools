@@ -16,9 +16,11 @@ router.register('solicitudes', SolicitudViewSet, 'solicitudes')
 router.register('sucursales', SucursalViewSet, 'sucursales')
 router.register('categorias', CategoriaViewSet, 'categorias')
 router.register('comentarios_respuesta', ComentarioRespuestaViewSet, 'comentarios_respuesta')
+router.register('empleados', EmpleadoViewSet, 'empleados')
 
 urlpatterns = [
     path('api/', include(router.urls)),
+    path('api/sucursal/<int:sucursal_id>/', SucursalInfo.as_view(), name="sucursal-info"),
     path('api/user-info/', UserInfoView.as_view(), name="user-info"),
     path('api/register/', RegisterView.as_view(), name='register'),
     path('api/login/', LoginView.as_view(), name='login'),
@@ -27,5 +29,7 @@ urlpatterns = [
     path('api/post/<int:publicacion_id>/', PostDetailView.as_view(), name='post_detail'),
     path('api/post/<int:publicacion_id>/comments/', CreateCommentView.as_view(), name='post_comment'),
     path('api/post/<int:publicacion_id>/comments/<int:comentario_id>/', CreateReplyView.as_view(), name='post_reply'),
-    path('api/post/<int:publicacion_id>/comments_list/', PostComments.as_view(), name="post_comments")
+    path('api/post/<int:publicacion_id>/comments_list/', PostComments.as_view(), name="post_comments"),
+    path('api/adminview/employees', EmployeesList.as_view(), name="employee_list"),
+    path('api/login-worker', LoginWorker.as_view(), name="login-worker")
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

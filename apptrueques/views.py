@@ -5,7 +5,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.shortcuts import get_object_or_404
 from .serializers import *
 from rest_framework.authtoken.models import Token
-from .models import Usuario
+from .models import Usuario, Empleado
 from django.contrib.auth import authenticate
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.decorators import authentication_classes, permission_classes
@@ -75,6 +75,8 @@ class ProfileView(APIView):
         serializer = UsuarioSerializer(instance=request.user)
         return Response({"Usuario logueado": serializer.data}, status=HTTP_200_OK)
     
+
+
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 class CreatePostView(APIView):
@@ -82,8 +84,11 @@ class CreatePostView(APIView):
         serializer = PublicacionSerializer(data=request.data)
         print("DATA", request.data)
         if serializer.is_valid():
-            serializer.save(usuario_propietario=request.user)  
-            return Response(serializer.data, status=HTTP_201_CREATED)
+            suc_destino = Sucursal.objects.get(pk=request.data['sucursal_destino'])
+            publicacion = serializer.save(usuario_propietario=request.user, sucursal_destino = suc_destino)  
+            response_data = PublicacionSerializer(publicacion).data 
+            print("RESPONSE", response_data) 
+            return Response(response_data, status=HTTP_201_CREATED) 
         else:
             print(serializer.errors)
             return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
@@ -136,11 +141,10 @@ class CreateReplyView(APIView):
 @permission_classes([IsAuthenticated])
 class PostDetailView(APIView):
     def get(self, request, publicacion_id):
-        print(request)
-        print("AAAAAAAAA", publicacion_id)
         try:
             publicacion = Publicacion.objects.get(pk=publicacion_id)
             serializer = PublicacionSerializer(publicacion)
+            print(serializer.data)
             return Response(serializer.data, status=HTTP_200_OK)
         except Publicacion.DoesNotExist:
             return Response({"detail": "La publicación que deseas ver no está disponible"}, status=HTTP_404_NOT_FOUND)
@@ -152,6 +156,18 @@ class UserInfoView(APIView):
         user = request.user
         serializer = UsuarioSerializer(user)
         return Response(serializer.data)
+     
+
+class SucursalInfo(APIView):
+    def get(self, request, sucursal_id):
+        try:
+            sucursal = Sucursal.objects.get(pk=sucursal_id)
+            serializer = SucursalSerializer(sucursal)
+            return Response(serializer.data, status=HTTP_200_OK)
+        except Publicacion.DoesNotExist:
+            return Response({"detail": "No existe sucursal con ese id"}, status=HTTP_404_NOT_FOUND)
+
+
 
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
@@ -164,3 +180,22 @@ class PostComments(APIView):
         serializer = PublicacionSerializer(publicacion)
         comentarios = serializer.get_comentarios(publicacion)
         return Response(comentarios)
+    
+# @authentication_classes([TokenAuthentication])
+# @permission_classes([IsAuthenticated])
+class EmployeesList(APIView):
+    def get(self, request):
+        empleados = Empleado.objects.all()
+        serializer = EmpleadoSerializer(empleados, many=True)
+        return Response(serializer.data)
+@permission_classes([AllowAny])
+class LoginWorker(APIView):
+    def post(self, request):
+        dni = request.data['dni']
+        password = request.data['password']
+        user = Empleado.authenticate_by_dni(dni, password)     
+        if user is not None:
+            token, created = Token.objects.get_or_create(user=user)
+            return Response({'token': token.key, 'user_id': user.id}, status=200)
+        else:
+            return Response({'error': 'Invalid credentials'}, status=400)

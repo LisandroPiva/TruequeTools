@@ -7,6 +7,8 @@ class Sucursal(models.Model):
     direccion = models.CharField(max_length=200)
     def __str__(self):
         return self.nombre
+    
+
 
 class Usuario(AbstractUser):
     reputacion = models.IntegerField(null=True, default=0)
@@ -19,7 +21,19 @@ class Usuario(AbstractUser):
 
     def __str__(self):
         return self.username
-    
+
+class Empleado(models.Model):
+    dni = models.CharField(max_length=11, unique=True, default='')
+    nombre = models.CharField(max_length=150, null=False, unique=False, default='')
+    password = models.CharField(max_length=50, blank=False, null=False, default='')
+    REQUIRED_FIELDS = ['password', 'dni']  
+
+    def __str__(self):
+        return 'empleado ' + self.nombre + ' dni ' + self.dni
+
+
+
+
 class Categoria(models.Model):
     nombre = models.CharField(max_length=100)
     def __str__(self):
