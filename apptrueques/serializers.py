@@ -6,6 +6,13 @@ class SucursalSerializer(serializers.ModelSerializer):
         model = Sucursal
         fields = '__all__'
 
+
+class EmpleadoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Empleado
+        fields = ('id', 'dni', 'nombre', 'password')
+
+
 class UsuarioSerializer(serializers.ModelSerializer):
     sucursal_favorita = SucursalSerializer(read_only=True)    
     class Meta:
@@ -42,6 +49,7 @@ class ComentarioSerializer(serializers.ModelSerializer):
 
 class PublicacionSerializer(serializers.ModelSerializer):   
     comentarios = ComentarioSerializer(many=True, read_only=True)
+    sucursal_destino = SucursalSerializer(read_only=True)
     usuario_propietario = UsuarioSerializer(read_only=True)
     class Meta:
         model = Publicacion

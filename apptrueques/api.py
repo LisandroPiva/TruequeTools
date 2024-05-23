@@ -9,7 +9,6 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     serializer_class = UsuarioSerializer
     authentication_classes = [TokenAuthentication]
 
-    
 class PublicacionViewSet(viewsets.ModelViewSet):
     queryset = Publicacion.objects.all()
     serializer_class = PublicacionSerializer
@@ -44,4 +43,7 @@ class CategoriaViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny]    
     serializer_class = CategoriaSerializer
         
-     
+class EmpleadoViewSet(viewsets.ModelViewSet):
+    queryset = Empleado.objects.all()
+    permission_classes = [permissions.AllowAny]    
+    serializer_class = EmpleadoSerializer
