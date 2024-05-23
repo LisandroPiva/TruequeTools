@@ -10,8 +10,9 @@ class SucursalSerializer(serializers.ModelSerializer):
 class EmpleadoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Empleado
-        fields = ('id', 'dni', 'nombre', 'password')
-
+        fields = '__all__'
+        read_only_fields = ('is_staff', )
+        extra_kwargs = {'password': {'write_only': True}}
 
 class UsuarioSerializer(serializers.ModelSerializer):
     sucursal_favorita = SucursalSerializer(read_only=True)    

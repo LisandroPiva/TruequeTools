@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from rest_framework.authtoken.models import Token
 
 class Sucursal(models.Model):
     nombre = models.CharField(max_length=100)
@@ -23,16 +24,16 @@ class Usuario(AbstractUser):
         return self.username
 
 class Empleado(models.Model):
-    dni = models.CharField(max_length=11, unique=True, default='')
+    sucursal_de_trabajo = models.ForeignKey(Sucursal, related_name="empleados", on_delete=models.CASCADE, null=True)
+    dni = models.CharField(max_length=11, unique=True, default='', primary_key=True)
     nombre = models.CharField(max_length=150, null=False, unique=False, default='')
+    is_staff = models.BooleanField(default=True)
     password = models.CharField(max_length=50, blank=False, null=False, default='')
-    REQUIRED_FIELDS = ['password', 'dni']  
+    USERNAME_FIELD = 'dni'
+    REQUIRED_FIELDS = ['password', 'dni', 'nombre', 'sucursal_de_trabajo']  
 
     def __str__(self):
         return 'empleado ' + self.nombre + ' dni ' + self.dni
-
-
-
 
 class Categoria(models.Model):
     nombre = models.CharField(max_length=100)
