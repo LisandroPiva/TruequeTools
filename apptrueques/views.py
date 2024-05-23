@@ -68,6 +68,27 @@ class LoginView(APIView):
         return Response({'token': token.key, 'user': serializer.data}, status=HTTP_200_OK)
 
 
+
+@permission_classes([AllowAny])
+class LoginWorker(APIView):
+    def post(self, request):
+        print(request.data)
+        dni = request.data['dni']
+        password = request.data['password']
+        try:
+            empleado = Empleado.objects.get(pk=dni)           
+            print(empleado.password)
+            if (empleado is not None and empleado.password == password):
+                    print("asd")
+                    serializer = EmpleadoSerializer(instance=empleado)
+                    return Response(serializer.data, status=HTTP_200_OK)
+            else:
+                return Response({"detail": "Credenciales inválidas"}, status=HTTP_404_NOT_FOUND)
+        except Empleado.DoesNotExist:
+            return Response({"detail": "Credenciales inválidas"}, status=HTTP_404_NOT_FOUND)
+
+
+
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 class ProfileView(APIView):
@@ -188,14 +209,13 @@ class EmployeesList(APIView):
         empleados = Empleado.objects.all()
         serializer = EmpleadoSerializer(empleados, many=True)
         return Response(serializer.data)
-@permission_classes([AllowAny])
-class LoginWorker(APIView):
-    def post(self, request):
-        dni = request.data['dni']
-        password = request.data['password']
-        user = Empleado.authenticate_by_dni(dni, password)     
-        if user is not None:
-            token, created = Token.objects.get_or_create(user=user)
-            return Response({'token': token.key, 'user_id': user.id}, status=200)
-        else:
-            return Response({'error': 'Invalid credentials'}, status=400)
+    
+
+class SearchPostsView(APIView):
+    def get(self, request):
+        queryset = Publicacion.objects.all()
+        query = request.query_params.get('q', None)
+        if query:
+            queryset = queryset.filter(titulo__icontains=query)
+        serializer = PublicacionSerializer(queryset, many=True)
+        return Response(serializer.data, status=HTTP_200_OK)
