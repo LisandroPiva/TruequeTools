@@ -213,9 +213,10 @@ class EmployeesList(APIView):
 
 class SearchPostsView(APIView):
     def get(self, request):
-        queryset = Publicacion.objects.all()
+        queryset = Publicacion.objects.all().order_by('-fecha') 
         query = request.query_params.get('q', None)
         if query:
             queryset = queryset.filter(titulo__icontains=query)
         serializer = PublicacionSerializer(queryset, many=True)
+        print(serializer.data)
         return Response(serializer.data, status=HTTP_200_OK)
