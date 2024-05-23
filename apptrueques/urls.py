@@ -20,6 +20,7 @@ router.register('empleados', EmpleadoViewSet, 'empleados')
 
 urlpatterns = [
     path('api/', include(router.urls)),
+    path('api/adminview/sucursales/add', CreateSucursalView.as_view(), name="add-sucursal"),
     path('api/sucursal/<int:sucursal_id>/', SucursalInfo.as_view(), name="sucursal-info"),
     path('api/user-info/', UserInfoView.as_view(), name="user-info"),
     path('api/register/', RegisterView.as_view(), name='register'),

@@ -114,7 +114,16 @@ class CreatePostView(APIView):
             print(serializer.errors)
             return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
         
-
+class CreateSucursalView(APIView):
+    def post(self, request):
+        serializer = SucursalSerializer(data=request.data)
+        if (serializer.is_valid()):
+            sucursal = serializer.save()
+            response_data = SucursalSerializer(sucursal).data
+            return Response(response_data, status=HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
+        
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 class CreateCommentView(APIView):
@@ -215,6 +224,7 @@ class SearchPostsView(APIView):
     def get(self, request):
         queryset = Publicacion.objects.all().order_by('-fecha') 
         query = request.query_params.get('q', None)
+        print(query)
         if query:
             queryset = queryset.filter(titulo__icontains=query)
         serializer = PublicacionSerializer(queryset, many=True)
