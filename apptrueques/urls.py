@@ -33,6 +33,8 @@ urlpatterns = [
     path('api/post/<int:publicacion_id>/comments_list/', PostComments.as_view(), name="post_comments"),
     path('api/adminview/employees/', EmployeesList.as_view(), name="employee_list"),
     path('api/login-worker/', LoginWorker.as_view(), name="login-worker"),
-    path('api/search-posts/', SearchPostsView.as_view(), name='search-posts')
+    path('api/search-posts/', SearchPostsView.as_view(), name='search-posts'),
+    path('api/adminview/employees/add', CreateEmployeeView.as_view(), name="add-employee"),
+
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)   

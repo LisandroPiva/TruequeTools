@@ -124,6 +124,17 @@ class CreateSucursalView(APIView):
         else:
             return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
         
+class CreateEmployeeView(APIView):
+    def post(self, request):
+        serializer = EmpleadoSerializer(data=request.data)
+        if (serializer.is_valid()):
+            empleado = serializer.save()
+            response_data = EmpleadoSerializer(empleado).data
+            print(response_data)
+            return Response(response_data, status=HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
+
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 class CreateCommentView(APIView):
