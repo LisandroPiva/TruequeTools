@@ -8,8 +8,6 @@ class Sucursal(models.Model):
     direccion = models.CharField(max_length=200)
     def __str__(self):
         return self.nombre
-    
-
 
 class Usuario(AbstractUser):
     reputacion = models.IntegerField(null=True, default=0)
@@ -29,7 +27,6 @@ class Empleado(models.Model):
     nombre = models.CharField(max_length=150, null=False, unique=False, default='')
     is_staff = models.BooleanField(default=True)
     password = models.CharField(max_length=50, blank=False, null=False, default='')
-    USERNAME_FIELD = 'dni'
     REQUIRED_FIELDS = ['password', 'dni', 'nombre', 'sucursal_de_trabajo']  
 
     def __str__(self):
@@ -48,13 +45,7 @@ class Publicacion(models.Model):
     categoria = models.ForeignKey(Categoria, on_delete=models.CASCADE)
     sucursal_destino = models.ForeignKey(Sucursal, related_name="publicaciones", on_delete=models.CASCADE, blank=True, null=True)
     imagen = models.ImageField(upload_to="images", null=True, blank=True)
-    ESTADO_CHOICES = (
-        ('PUBLICADA', 'Publicada'),
-        ('PENDIENTE', 'Pendiente'),
-        ('EXITOSA', 'Exitosa'),
-        ('FALLIDA', 'Fallida'),
-    )
-    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='PUBLICADA')
+  
     def __str__(self):
         return self.titulo
     
@@ -62,6 +53,22 @@ class Publicacion(models.Model):
         if not self.sucursal_destino:
             self.sucursal_destino = self.usuario_propietario.sucursal_favorita
         super().save(*args, **kwargs)
+
+
+class SolicitudDeIntercambio(models.Model):
+    publicacion_deseada = models.ForeignKey(Publicacion, related_name='solicitudes_recibidas', on_delete=models.CASCADE)
+    publicacion_a_intercambiar = models.ForeignKey(Publicacion, related_name='solicitudes_enviadas', on_delete=models.CASCADE)
+    fecha = models.DateTimeField(auto_now_add=True)
+    ESTADO_CHOICES = (
+        ('ESPERA', 'Espera'),
+        ('PENDIENTE', 'Pendiente'),
+        ('EXITOSA', 'Exitosa'),
+        ('FALLIDA', 'Fallida'),
+    )
+    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='ESPERA')
+    def __str__(self):
+        return self.publicacion_a_intercambiar.usuario_propietario
+    
 
 class ComentarioRespuesta(models.Model):
     contenido = models.TextField()
@@ -84,11 +91,3 @@ class Comentario(models.Model):
         return self.respuesta
 
 
-class Solicitud(models.Model):
-    publicacion_deseada = models.ForeignKey(Publicacion, related_name='solicitudes_recibidas', on_delete=models.CASCADE)
-    publicacion_a_intercambiar = models.ForeignKey(Publicacion, related_name='solicitudes_enviadas', on_delete=models.CASCADE)
-    fecha = models.DateTimeField(auto_now_add=True)
-    def __str__(self):
-        return self.publicacion_a_intercambiar.usuario_propietario
-
-    

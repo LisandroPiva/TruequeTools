@@ -15,10 +15,10 @@ class PublicacionViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]    
     authentication_classes = [TokenAuthentication]
 
-class SolicitudViewSet(viewsets.ModelViewSet):
-    queryset = Solicitud.objects.all()
+class SolicitudDeIntercambioViewSet(viewsets.ModelViewSet):
+    queryset = SolicitudDeIntercambio.objects.all()
     permission_classes = [permissions.IsAuthenticated]    
-    serializer_class = SolicitudSerializer
+    serializer_class = SolicitudDeIntercambioSerializer
     authentication_classes = [TokenAuthentication]
 
 class ComentarioViewSet(viewsets.ModelViewSet):
