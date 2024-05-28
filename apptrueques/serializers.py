@@ -6,7 +6,6 @@ class SucursalSerializer(serializers.ModelSerializer):
         model = Sucursal
         fields = '__all__'
 
-
 class EmpleadoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Empleado
@@ -28,11 +27,11 @@ class CategoriaSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class SolicitudSerializer(serializers.ModelSerializer):
+class SolicitudDeIntercambioSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Solicitud
+        model = SolicitudDeIntercambio
         fields = '__all__'
-        read_only_fields = ('fecha', )
+        read_only_fields = ('fecha', 'estado', )
 
 class ComentarioRespuestaSerializer(serializers.ModelSerializer):
     class Meta:
@@ -52,13 +51,14 @@ class PublicacionSerializer(serializers.ModelSerializer):
     comentarios = ComentarioSerializer(many=True, read_only=True)
     sucursal_destino = SucursalSerializer(read_only=True)
     usuario_propietario = UsuarioSerializer(read_only=True)
-
+    solicitudes_recibidas = SolicitudDeIntercambioSerializer(many=True, read_only=True)
     class Meta:
         model = Publicacion
         fields = '__all__'
-        read_only_fields=('fecha', 'estado', )
+        read_only_fields=('fecha',  )
     
     def get_comentarios(self, publicacion):
         return self.to_representation(publicacion)['comentarios']
     
-
+    def get_solicitudes(self, publicacion):
+        return self.to_representation(publicacion)['solicitudes_recibidas']

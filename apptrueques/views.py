@@ -87,8 +87,6 @@ class LoginWorker(APIView):
         except Empleado.DoesNotExist:
             return Response({"detail": "Credenciales inválidas"}, status=HTTP_404_NOT_FOUND)
 
-
-
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 class ProfileView(APIView):
@@ -241,3 +239,46 @@ class SearchPostsView(APIView):
         serializer = PublicacionSerializer(queryset, many=True)
         print(serializer.data)
         return Response(serializer.data, status=HTTP_200_OK)
+
+
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+class MisProductosView(APIView):
+    def get(self, request):
+        user = request.user
+        queryset = Publicacion.objects.filter(usuario_propietario=user)
+        serializer = PublicacionSerializer(queryset, many=True)
+        print(serializer.data)
+        return Response(serializer.data, status=HTTP_200_OK)
+
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+class CreateSolicitudView(APIView):
+    def post(self, request):
+        publicacion_deseada_id = request.data.get('publicacion_deseada')
+        publicacion_a_intercambiar_id = request.data.get('publicacion_a_intercambiar')
+        try:
+            publicacion_deseada = Publicacion.objects.get(id=publicacion_deseada_id)
+            publicacion_a_intercambiar = Publicacion.objects.get(id=publicacion_a_intercambiar_id)
+            print(publicacion_deseada.categoria, publicacion_a_intercambiar.categoria)
+            if publicacion_deseada.categoria != publicacion_a_intercambiar.categoria:
+                return Response({'error': 'Las publicaciones deben ser de la misma categoría.'}, status=HTTP_400_BAD_REQUEST)
+            
+            solicitud = SolicitudDeIntercambio.objects.create(
+                publicacion_deseada=publicacion_deseada,
+                publicacion_a_intercambiar=publicacion_a_intercambiar,
+                estado='ESPERA'
+            )
+            serializer = SolicitudDeIntercambioSerializer(solicitud)
+            return Response(serializer.data, status=HTTP_201_CREATED)
+        
+        except Publicacion.DoesNotExist:
+            return Response({'error': 'Publicación no encontrada.'}, status=HTTP_404_NOT_FOUND)
+
+
+class MisSolicitudesView(APIView):
+    def get(self, request, publicacion_id):
+        publicacion = Publicacion.objects.get(pk=publicacion_id)
+        serializer = PublicacionSerializer(publicacion)
+        solicitudes = serializer.get_solicitudes(publicacion)
+        return Response(solicitudes)

@@ -12,7 +12,7 @@ router = routers.DefaultRouter()
 router.register('usuarios', UsuarioViewSet, 'usuarios')
 router.register('publicaciones', PublicacionViewSet, 'publicaciones')
 router.register('comentarios', ComentarioViewSet, 'comentarios')
-router.register('solicitudes', SolicitudViewSet, 'solicitudes')
+router.register('solicitudes', SolicitudDeIntercambioViewSet, 'solicitudes')
 router.register('sucursales', SucursalViewSet, 'sucursales')
 router.register('categorias', CategoriaViewSet, 'categorias')
 router.register('comentarios_respuesta', ComentarioRespuestaViewSet, 'comentarios_respuesta')
@@ -35,6 +35,8 @@ urlpatterns = [
     path('api/login-worker/', LoginWorker.as_view(), name="login-worker"),
     path('api/search-posts/', SearchPostsView.as_view(), name='search-posts'),
     path('api/adminview/employees/add', CreateEmployeeView.as_view(), name="add-employee"),
+    path('api/misProductos/', MisProductosView.as_view(), name="user_products"),
+    path('api/create-solicitud/', CreateSolicitudView.as_view(), name="enviar_solicitud"),
+    path('api/post/<int:publicacion_id>/solicitudes', MisSolicitudesView.as_view(), name="mis_solicitudes")
 
-
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)   
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)       
