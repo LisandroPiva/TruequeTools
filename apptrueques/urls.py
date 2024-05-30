@@ -37,6 +37,9 @@ urlpatterns = [
     path('api/adminview/employees/add', CreateEmployeeView.as_view(), name="add-employee"),
     path('api/misProductos/', MisProductosView.as_view(), name="user_products"),
     path('api/create-solicitud/', CreateSolicitudView.as_view(), name="enviar_solicitud"),
-    path('api/post/<int:publicacion_id>/solicitudes', MisSolicitudesView.as_view(), name="mis_solicitudes")
+    path('api/post/<int:publicacion_id>/solicitudes/', MisSolicitudesView.as_view(), name="mis_solicitudes"),
+    path('api/solicitudes/<int:solicitud_id>/', AceptarSolicitudView.as_view(), name="aceptar_solicitud"),
+    path('api/historial/', HistorialDeSolicitudesView.as_view(), name="historial")
+
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)       

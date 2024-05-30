@@ -58,6 +58,7 @@ class Publicacion(models.Model):
 class SolicitudDeIntercambio(models.Model):
     publicacion_deseada = models.ForeignKey(Publicacion, related_name='solicitudes_recibidas', on_delete=models.CASCADE)
     publicacion_a_intercambiar = models.ForeignKey(Publicacion, related_name='solicitudes_enviadas', on_delete=models.CASCADE)
+    fecha_del_intercambio = models.DateTimeField(null=True, blank=True)
     fecha = models.DateTimeField(auto_now_add=True)
     ESTADO_CHOICES = (
         ('ESPERA', 'Espera'),

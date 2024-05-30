@@ -1,5 +1,5 @@
 from rest_framework.response import Response
-from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_201_CREATED, HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_403_FORBIDDEN, HTTP_406_NOT_ACCEPTABLE, HTTP_409_CONFLICT
+from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_201_CREATED, HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_403_FORBIDDEN, HTTP_406_NOT_ACCEPTABLE, HTTP_409_CONFLICT,HTTP_204_NO_CONTENT
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.shortcuts import get_object_or_404
@@ -11,7 +11,8 @@ from rest_framework.authentication import TokenAuthentication
 from rest_framework.decorators import authentication_classes, permission_classes
 from datetime import datetime
 from rest_framework.exceptions import ValidationError
-
+from django.utils.dateparse import parse_datetime
+from .utils import *
 
 @permission_classes([AllowAny])
 class RegisterView(APIView):
@@ -63,7 +64,6 @@ class LoginView(APIView):
         if user is None:
             return Response({"error": "invalid credentials"}, status=HTTP_400_BAD_REQUEST)
         token, created = Token.objects.get_or_create(user=user)
-        
         serializer = UsuarioSerializer(instance=user)
         return Response({'token': token.key, 'user': serializer.data}, status=HTTP_200_OK)
 
@@ -79,7 +79,7 @@ class LoginWorker(APIView):
             empleado = Empleado.objects.get(pk=dni)           
             print(empleado.password)
             if (empleado is not None and empleado.password == password):
-                    print("asd")
+                    
                     serializer = EmpleadoSerializer(instance=empleado)
                     return Response(serializer.data, status=HTTP_200_OK)
             else:
@@ -240,15 +240,25 @@ class SearchPostsView(APIView):
         print(serializer.data)
         return Response(serializer.data, status=HTTP_200_OK)
 
-
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 class MisProductosView(APIView):
     def get(self, request):
         user = request.user
-        queryset = Publicacion.objects.filter(usuario_propietario=user)
+
+        # Obtener IDs de las publicaciones deseadas con al menos una solicitud en estado diferente de "Espera"
+        publicaciones_deseadas_no_espera = SolicitudDeIntercambio.objects.exclude(estado='ESPERA').values_list('publicacion_deseada', flat=True).distinct()
+
+        # Obtener IDs de las publicaciones a intercambiar con al menos una solicitud en estado diferente de "Espera"
+        publicaciones_a_intercambiar_no_espera = SolicitudDeIntercambio.objects.exclude(estado='ESPERA').values_list('publicacion_a_intercambiar', flat=True).distinct()
+
+        # Combinar ambas listas de IDs
+        publicaciones_no_espera = set(publicaciones_deseadas_no_espera).union(set(publicaciones_a_intercambiar_no_espera))
+
+        # Filtrar las publicaciones del usuario excluyendo aquellas en la lista de IDs combinada
+        queryset = Publicacion.objects.filter(usuario_propietario=user).exclude(id__in=publicaciones_no_espera)
+
         serializer = PublicacionSerializer(queryset, many=True)
-        print(serializer.data)
         return Response(serializer.data, status=HTTP_200_OK)
 
 @authentication_classes([TokenAuthentication])
@@ -264,21 +274,68 @@ class CreateSolicitudView(APIView):
             if publicacion_deseada.categoria != publicacion_a_intercambiar.categoria:
                 return Response({'error': 'Las publicaciones deben ser de la misma categoría.'}, status=HTTP_400_BAD_REQUEST)
             
+            fecha = request.data.get('fecha_del_intercambio')
+            if fecha:
+                fecha = parse_datetime(fecha)
+                
+                if not fecha:
+                    return Response({'error': 'Formato de fecha inválido.'}, status=HTTP_404_NOT_FOUND)
+                if fecha < datetime.today():
+                    return Response({'error': 'Formato de fecha inválido.'}, status=HTTP_404_NOT_FOUND)
+
+            
             solicitud = SolicitudDeIntercambio.objects.create(
                 publicacion_deseada=publicacion_deseada,
                 publicacion_a_intercambiar=publicacion_a_intercambiar,
-                estado='ESPERA'
+                estado='ESPERA',
+                fecha_del_intercambio = fecha,
             )
             serializer = SolicitudDeIntercambioSerializer(solicitud)
             return Response(serializer.data, status=HTTP_201_CREATED)
         
         except Publicacion.DoesNotExist:
             return Response({'error': 'Publicación no encontrada.'}, status=HTTP_404_NOT_FOUND)
+        
 
-
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
 class MisSolicitudesView(APIView):
     def get(self, request, publicacion_id):
         publicacion = Publicacion.objects.get(pk=publicacion_id)
         serializer = PublicacionSerializer(publicacion)
         solicitudes = serializer.get_solicitudes(publicacion)
         return Response(solicitudes)
+    
+    
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+class HistorialDeSolicitudesView(APIView):
+    def get(self, request):
+        user = request.user
+        # Obtener las solicitudes basadas en las publicaciones del usuario
+        solicitudes = get_solicitudes_no_espera(user)
+        # Serializar las solicitudes
+        serializer = SolicitudDeIntercambioSerializer(solicitudes, many=True)
+        return Response(serializer.data)
+    
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+class AceptarSolicitudView(APIView):
+    def patch(self, request, solicitud_id):
+        print("Entrando al método patch")
+
+        try:
+            solicitud = SolicitudDeIntercambio.objects.get(id=solicitud_id)
+            print(f"Solicitud encontrada: {solicitud.id}")
+        except SolicitudDeIntercambio.DoesNotExist:
+            print("Solicitud no encontrada")
+            return Response(status=HTTP_404_NOT_FOUND)
+
+        data = {'estado': 'PENDIENTE'}
+        serializer = SolicitudDeIntercambioSerializer(solicitud, data=data, partial=True)  # partial=True permite actualizaciones parciales
+        if serializer.is_valid():
+            serializer.save()
+            print(f"Estado actualizado a: {solicitud.estado}")
+            return Response(status=HTTP_204_NO_CONTENT)
+        print(f"Errores del serializer: {serializer.errors}")
+        return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
