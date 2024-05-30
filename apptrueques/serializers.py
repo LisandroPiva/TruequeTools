@@ -31,7 +31,9 @@ class SolicitudDeIntercambioSerializer(serializers.ModelSerializer):
     class Meta:
         model = SolicitudDeIntercambio
         fields = '__all__'
-        read_only_fields = ('fecha', 'estado', )
+        read_only_fields = ('fecha','fecha_del_intercambio', )
+
+    
 
 class ComentarioRespuestaSerializer(serializers.ModelSerializer):
     class Meta:
