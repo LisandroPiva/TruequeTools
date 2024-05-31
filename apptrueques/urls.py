@@ -35,10 +35,12 @@ urlpatterns = [
     path('api/login-worker/', LoginWorker.as_view(), name="login-worker"),
     path('api/search-posts/', SearchPostsView.as_view(), name='search-posts'),
     path('api/adminview/employees/add', CreateEmployeeView.as_view(), name="add-employee"),
+    path('api/adminview/employees/<int:employee_id>/', EmployeeDetailView.as_view(), name="employee_detail"),
     path('api/misProductos/', MisProductosView.as_view(), name="user_products"),
     path('api/create-solicitud/', CreateSolicitudView.as_view(), name="enviar_solicitud"),
     path('api/post/<int:publicacion_id>/solicitudes/', MisSolicitudesView.as_view(), name="mis_solicitudes"),
     path('api/solicitudes/<int:solicitud_id>/', AceptarSolicitudView.as_view(), name="aceptar_solicitud"),
+    path('api/solicitudes/<int:solicitud_id>/cancel/', CancelarSolicitudView.as_view(), name="cencelar_solicitud"),
     path('api/historial/', HistorialDeSolicitudesView.as_view(), name="historial")
 
 

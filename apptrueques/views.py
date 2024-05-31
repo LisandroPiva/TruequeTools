@@ -9,10 +9,13 @@ from .models import Usuario, Empleado
 from django.contrib.auth import authenticate
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.decorators import authentication_classes, permission_classes
-from datetime import datetime
 from rest_framework.exceptions import ValidationError
 from django.utils.dateparse import parse_datetime
+from django.utils import timezone
+
 from .utils import *
+from datetime import datetime, timedelta
+
 
 @permission_classes([AllowAny])
 class RegisterView(APIView):
@@ -187,6 +190,19 @@ class PostDetailView(APIView):
             return Response(serializer.data, status=HTTP_200_OK)
         except Publicacion.DoesNotExist:
             return Response({"detail": "La publicación que deseas ver no está disponible"}, status=HTTP_404_NOT_FOUND)
+        
+
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+class EmployeeDetailView(APIView):
+    def get(self, request, employee_id):
+        try:
+            employee = Publicacion.objects.get(pk=employee_id)
+            serializer = PublicacionSerializer(employee)
+            print(serializer.data)
+            return Response(serializer.data, status=HTTP_200_OK)
+        except Publicacion.DoesNotExist:
+            return Response({"detail": "El empleado que deseas ver no está disponible"}, status=HTTP_404_NOT_FOUND)
     
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
@@ -339,3 +355,23 @@ class AceptarSolicitudView(APIView):
             return Response(status=HTTP_204_NO_CONTENT)
         print(f"Errores del serializer: {serializer.errors}")
         return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
+    
+
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+class CancelarSolicitudView(APIView):
+    def delete(self, request, solicitud_id):
+        try:
+            solicitud = SolicitudDeIntercambio.objects.get(id=solicitud_id)
+        except SolicitudDeIntercambio.DoesNotExist:
+            print("Solicitud no encontrada")
+            return Response(status=HTTP_404_NOT_FOUND)
+
+        now_local = timezone.localtime(timezone.now())
+        if solicitud.fecha_del_intercambio - now_local > timedelta(hours=24):
+            solicitud.delete()
+            print("Solicitud eliminada de la base de datos")
+            return Response(status=HTTP_204_NO_CONTENT)
+        else:
+            return Response(status=HTTP_409_CONFLICT) ##desde el front hacer un if error.status == 409 mostrar mensaje de "para cancelar un truque debe"
+                                                      ## haber más de 24 horas de anticipación              
