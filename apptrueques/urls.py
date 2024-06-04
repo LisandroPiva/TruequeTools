@@ -28,8 +28,11 @@ urlpatterns = [
     path('api/profile/', ProfileView.as_view(), name='profile'),
     path('api/createPost/', CreatePostView.as_view(), name='createpost'),
     path('api/post/<int:publicacion_id>/', PostDetailView.as_view(), name='post_detail'),
-    path('api/post/<int:publicacion_id>/comments/', CreateCommentView.as_view(), name='post_comment'),
-    path('api/post/<int:publicacion_id>/comments/<int:comentario_id>/', CreateReplyView.as_view(), name='post_reply'),
+
+    path('api/post/<int:publicacion_id>/comments/', CommentView.as_view(), name='post_comment'),
+    path('api/post/<int:publicacion_id>/comments/<int:comentario_id>/delete/', CommentView.as_view(), name='delete_comment'),
+    path('api/post/<int:publicacion_id>/comments/<int:comentario_id>/', ReplyView.as_view(), name='post_reply'),
+
     path('api/post/<int:publicacion_id>/comments_list/', PostComments.as_view(), name="post_comments"),
     path('api/adminview/employees/', EmployeesList.as_view(), name="employee_list"),
     path('api/login-worker/', LoginWorker.as_view(), name="login-worker"),
@@ -37,9 +40,10 @@ urlpatterns = [
     path('api/adminview/employees/add', CreateEmployeeView.as_view(), name="add-employee"),
     path('api/adminview/employees/<int:employee_id>/', EmployeeDetailView.as_view(), name="employee_detail"),
     path('api/misProductos/', MisProductosView.as_view(), name="user_products"),
-    path('api/create-solicitud/', CreateSolicitudView.as_view(), name="enviar_solicitud"),
+    path('api/create-solicitud/', SolicitudView.as_view(), name="enviar_solicitud"),
+    path('api/solicitudes/<int:solicitud_id>/', SolicitudView.as_view(), name="aceptar_solicitud"),
+    path('api/solicitudes/<int:solicitud_id>/', SolicitudView.as_view(), name='delete_solicitud'),
     path('api/post/<int:publicacion_id>/solicitudes/', MisSolicitudesView.as_view(), name="mis_solicitudes"),
-    path('api/solicitudes/<int:solicitud_id>/', AceptarSolicitudView.as_view(), name="aceptar_solicitud"),
     path('api/solicitudes/<int:solicitud_id>/cancel/', CancelarSolicitudView.as_view(), name="cencelar_solicitud"),
     path('api/historial/', HistorialDeSolicitudesView.as_view(), name="historial")
 
