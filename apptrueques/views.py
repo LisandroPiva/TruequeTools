@@ -12,7 +12,7 @@ from rest_framework.decorators import authentication_classes, permission_classes
 from rest_framework.exceptions import ValidationError
 from django.utils.dateparse import parse_datetime
 from django.utils import timezone
-
+from .api import PublicacionViewSet
 from .utils import *
 from datetime import datetime, timedelta
 
@@ -125,6 +125,8 @@ class CreateSucursalView(APIView):
         else:
             return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
         
+
+
 class CreateEmployeeView(APIView):
     def post(self, request):
         serializer = EmpleadoSerializer(data=request.data)
@@ -138,7 +140,7 @@ class CreateEmployeeView(APIView):
 
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
-class CreateCommentView(APIView):
+class CommentView(APIView):
     def post(self, request, publicacion_id):
         try:
             publicacion = get_object_or_404(Publicacion, pk=publicacion_id)
@@ -151,9 +153,19 @@ class CreateCommentView(APIView):
         else:
             return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
         
+    def delete(self, request, publicacion_id, comentario_id):
+        try:
+            publicacion = get_object_or_404(Publicacion, pk=publicacion_id)
+            comentario = get_object_or_404(Comentario, pk=comentario_id, publicacion=publicacion, usuario_propietario=request.user)
+        except (Publicacion.DoesNotExist, Comentario.DoesNotExist):
+            return Response({"detail": "El comentario o la publicación no está disponible"}, status=HTTP_404_NOT_FOUND)
+        
+        comentario.delete()
+        return Response(status=HTTP_204_NO_CONTENT)
+        
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
-class CreateReplyView(APIView):
+class ReplyView(APIView):
     def post(self, request, publicacion_id, comentario_id):
         try:
             comentario_original = get_object_or_404(Comentario, pk=comentario_id)
@@ -178,6 +190,18 @@ class CreateReplyView(APIView):
             return Response(serializer.data, status=HTTP_201_CREATED)
         else:
             return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
+    # def delete(self, request, publicacion_id, respuesta_id):
+    #     print(publicacion_id) 
+    #     print(respuesta_id)
+    #     try:
+            
+    #         publicacion = get_object_or_404(Publicacion, pk=publicacion_id)
+    #         respuesta = get_object_or_404(ComentarioRespuesta, pk=respuesta_id, publicacion=publicacion, usuario_propietario=request.user)
+    #     except (Publicacion.DoesNotExist, ComentarioRespuesta.DoesNotExist):
+    #         return Response({"detail": "El comentario o la publicación no está disponible"}, status=HTTP_404_NOT_FOUND)
+        
+    #     respuesta.delete()
+    #     return Response(status=HTTP_204_NO_CONTENT)
 
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
@@ -247,13 +271,18 @@ class EmployeesList(APIView):
 
 class SearchPostsView(APIView):
     def get(self, request):
-        queryset = Publicacion.objects.all().order_by('-fecha') 
+        # Obtén el queryset de PublicacionViewSet
+        viewset = PublicacionViewSet()
+        viewset.request = request  # Necesario si el método get_queryset depende del request
+        queryset = viewset.get_queryset()
+        
+        # Filtra por título si hay un query param 'q'
         query = request.query_params.get('q', None)
-        print(query)
         if query:
             queryset = queryset.filter(titulo__icontains=query)
+            
+        # Serializa y retorna la respuesta
         serializer = PublicacionSerializer(queryset, many=True)
-        print(serializer.data)
         return Response(serializer.data, status=HTTP_200_OK)
 
 @authentication_classes([TokenAuthentication])
@@ -279,8 +308,8 @@ class MisProductosView(APIView):
 
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
-class CreateSolicitudView(APIView):
-    def post(self, request):
+class SolicitudView(APIView):
+    def post(self, request): ##este método se ejecuta cuando intercambia un prod
         publicacion_deseada_id = request.data.get('publicacion_deseada')
         publicacion_a_intercambiar_id = request.data.get('publicacion_a_intercambiar')
         try:
@@ -291,9 +320,10 @@ class CreateSolicitudView(APIView):
                 return Response({'error': 'Las publicaciones deben ser de la misma categoría.'}, status=HTTP_400_BAD_REQUEST)
             
             fecha = request.data.get('fecha_del_intercambio')
+            print(fecha)
             if fecha:
                 fecha = parse_datetime(fecha)
-                
+                print(fecha)
                 if not fecha:
                     return Response({'error': 'Formato de fecha inválido.'}, status=HTTP_404_NOT_FOUND)
                 if fecha < datetime.today():
@@ -307,10 +337,52 @@ class CreateSolicitudView(APIView):
                 fecha_del_intercambio = fecha,
             )
             serializer = SolicitudDeIntercambioSerializer(solicitud)
+            print(serializer.data)
             return Response(serializer.data, status=HTTP_201_CREATED)
-        
+    
         except Publicacion.DoesNotExist:
             return Response({'error': 'Publicación no encontrada.'}, status=HTTP_404_NOT_FOUND)
+         
+    def delete(self, request, solicitud_id): ##este método se ejecuta cuando rechaza una solicitud
+        try:
+            solicitud = SolicitudDeIntercambio.objects.get(id=solicitud_id, usuario=request.user)
+            solicitud.delete()
+            return Response(status=HTTP_204_NO_CONTENT)
+        except SolicitudDeIntercambio.DoesNotExist:
+            return Response({'error': 'Solicitud no encontrada.'}, status=HTTP_404_NOT_FOUND)
+
+    def patch(self, request, solicitud_id):
+        print("Entrando al método patch")
+
+        try:
+            solicitud = SolicitudDeIntercambio.objects.get(id=solicitud_id)
+            print(f"Solicitud encontrada: {solicitud.id}")
+        except SolicitudDeIntercambio.DoesNotExist:
+            print("Solicitud no encontrada")
+            return Response(status=HTTP_404_NOT_FOUND)
+
+        data = {'estado': 'PENDIENTE'}
+        serializer = SolicitudDeIntercambioSerializer(solicitud, data=data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            print(f"Estado actualizado a: {solicitud.estado}")
+
+            # Eliminar otras solicitudes para la misma publicación deseada
+            otras_solicitudes = SolicitudDeIntercambio.objects.filter(
+                publicacion_deseada=solicitud.publicacion_deseada,
+                estado='ESPERA'
+            ).exclude(id=solicitud_id)
+
+            otras_solicitudes_count = otras_solicitudes.count()
+            print(f"Número de otras solicitudes a eliminar: {otras_solicitudes_count}")
+
+            otras_solicitudes.delete()
+            print("Otras solicitudes eliminadas")
+
+            return Response(status=HTTP_204_NO_CONTENT)
+
+        print(f"Errores del serializer: {serializer.errors}")
+        return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
         
 
 @authentication_classes([TokenAuthentication])
@@ -334,28 +406,8 @@ class HistorialDeSolicitudesView(APIView):
         serializer = SolicitudDeIntercambioSerializer(solicitudes, many=True)
         return Response(serializer.data)
     
-@authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])
-class AceptarSolicitudView(APIView):
-    def patch(self, request, solicitud_id):
-        print("Entrando al método patch")
 
-        try:
-            solicitud = SolicitudDeIntercambio.objects.get(id=solicitud_id)
-            print(f"Solicitud encontrada: {solicitud.id}")
-        except SolicitudDeIntercambio.DoesNotExist:
-            print("Solicitud no encontrada")
-            return Response(status=HTTP_404_NOT_FOUND)
 
-        data = {'estado': 'PENDIENTE'}
-        serializer = SolicitudDeIntercambioSerializer(solicitud, data=data, partial=True)  # partial=True permite actualizaciones parciales
-        if serializer.is_valid():
-            serializer.save()
-            print(f"Estado actualizado a: {solicitud.estado}")
-            return Response(status=HTTP_204_NO_CONTENT)
-        print(f"Errores del serializer: {serializer.errors}")
-        return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
-    
 
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
