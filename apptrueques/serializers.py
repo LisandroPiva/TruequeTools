@@ -9,9 +9,26 @@ class SucursalSerializer(serializers.ModelSerializer):
 class EmpleadoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Empleado
-        fields = '__all__'
+        fields = ('id','email', 'sucursal_de_trabajo',  'password', 'is_staff', )
         read_only_fields = ('is_staff', )
         extra_kwargs = {'password': {'write_only': True}}
+
+    def create(self, validated_data):
+        validated_data['is_staff'] = True
+        empleado = Empleado(**validated_data)
+        empleado.set_password(validated_data['password'])
+        empleado.save()
+        return empleado
+    
+class ProductoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Producto
+        fields = '__all__'
+
+class VentaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Venta
+        fields = '__all__'
 
 class UsuarioSerializer(serializers.ModelSerializer):
     sucursal_favorita = SucursalSerializer(read_only=True)    
@@ -51,16 +68,25 @@ class ComentarioSerializer(serializers.ModelSerializer):
 
 class PublicacionSerializer(serializers.ModelSerializer):   
     comentarios = ComentarioSerializer(many=True, read_only=True)
+    venta = VentaSerializer(read_only=True)
     sucursal_destino = SucursalSerializer(read_only=True)
     usuario_propietario = UsuarioSerializer(read_only=True)
     solicitudes_recibidas = SolicitudDeIntercambioSerializer(many=True, read_only=True)
     class Meta:
         model = Publicacion
         fields = '__all__'
-        read_only_fields=('fecha',  )
+        read_only_fields=('fecha',  'venta',  )
     
     def get_comentarios(self, publicacion):
         return self.to_representation(publicacion)['comentarios']
     
-    def get_solicitudes(self, publicacion):
-        return self.to_representation(publicacion)['solicitudes_recibidas']
+    def get_solicitudes_recibidas(self, publicacion):
+        queryset = SolicitudDeIntercambio.objects.filter(
+            publicacion=publicacion,
+            estado='PENDIENTE'
+        ).order_by('fecha_del_intercambio')
+        return SolicitudDeIntercambioSerializer(queryset, many=True).data
+    
+    def get_venta(self, publicacion):
+        return self.to_representation(publicacion)['productos_vendidos']
+

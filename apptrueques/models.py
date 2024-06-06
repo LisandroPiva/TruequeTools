@@ -1,7 +1,6 @@
 from django.db import models
-from django.contrib.auth.models import AbstractUser
-from django.db import models
-from rest_framework.authtoken.models import Token
+from django.contrib.auth.models import AbstractUser, Group, Permission
+from rest_framework_simplejwt.tokens import RefreshToken
 
 class Sucursal(models.Model):
     nombre = models.CharField(max_length=100)
@@ -21,21 +20,54 @@ class Usuario(AbstractUser):
     def __str__(self):
         return self.username
 
-class Empleado(models.Model):
+class Empleado(AbstractUser):
     sucursal_de_trabajo = models.ForeignKey(Sucursal, related_name="empleados", on_delete=models.CASCADE, null=True)
-    dni = models.CharField(max_length=11, unique=True, default='', primary_key=True)
-    nombre = models.CharField(max_length=150, null=False, unique=False, default='')
-    is_staff = models.BooleanField(default=True)
-    password = models.CharField(max_length=50, blank=False, null=False, default='')
-    REQUIRED_FIELDS = ['password', 'dni', 'nombre', 'sucursal_de_trabajo']  
+    email = models.EmailField(unique=True, default='')
+    username = models.CharField(max_length=150, unique=False)
+    USERNAME_FIELD = 'email'
+
+    REQUIRED_FIELDS = ['username', 'password', 'sucursal_de_trabajo', ]
+
+    groups = models.ManyToManyField(
+        Group,
+        verbose_name=('groups'),
+        blank=True,
+        related_name='empleado_groups'  # Nombre de acceso inverso personalizado
+    )
+    user_permissions = models.ManyToManyField(
+        Permission,
+        verbose_name=('user permissions'),
+        blank=True,
+        related_name='empleado_permissions'  # Nombre de acceso inverso personalizado
+    )
 
     def __str__(self):
-        return 'empleado ' + self.nombre + ' dni ' + self.dni
+        return 'empleado ' + self.username + ' email ' + self.email
+    
+    def get_tokens(self):
+        refresh = RefreshToken.for_user(self)
+        return {
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+        }
 
 class Categoria(models.Model):
     nombre = models.CharField(max_length=100)
     def __str__(self):
         return self.nombre
+
+
+
+class Producto(models.Model):
+    nombre = models.CharField(max_length=50)
+    precio_unitario = models.FloatField()
+    cantidad_vendida = models.FloatField()
+
+    def __str__(self):
+        return self.nombre
+
+    def getPrecioProducto(self):
+        return self.precio_unitario * self.cantidad_vendida
 
 class Publicacion(models.Model):
     usuario_propietario = models.ForeignKey(Usuario, related_name="publicaciones", on_delete=models.CASCADE)
@@ -45,7 +77,7 @@ class Publicacion(models.Model):
     categoria = models.ForeignKey(Categoria, on_delete=models.CASCADE)
     sucursal_destino = models.ForeignKey(Sucursal, related_name="publicaciones", on_delete=models.CASCADE, blank=True, null=True)
     imagen = models.ImageField(upload_to="images", null=True, blank=True)
-  
+
     def __str__(self):
         return self.titulo
     
@@ -53,6 +85,21 @@ class Publicacion(models.Model):
         if not self.sucursal_destino:
             self.sucursal_destino = self.usuario_propietario.sucursal_favorita
         super().save(*args, **kwargs)
+
+    @property
+    def productos(self):
+        if self.venta:
+            return self.venta.productos.all()
+        else:
+            return []
+
+class Venta(models.Model):
+    publicacion = models.OneToOneField(Publicacion, related_name='venta', on_delete=models.CASCADE, blank=True, null=True)
+    productos = models.ManyToManyField(Producto, related_name='ventas', blank=True)
+
+    def precio_total(self):
+        return sum(producto.getPrecioProducto() for producto in self.productos.all())
+
 
 
 class SolicitudDeIntercambio(models.Model):
