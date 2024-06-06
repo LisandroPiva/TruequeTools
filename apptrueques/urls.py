@@ -5,7 +5,10 @@ from .api import *
 from .views import *
 from django.conf import settings
 from django.conf.urls.static import static
-
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+)
 
 router = routers.DefaultRouter()
 
@@ -17,9 +20,14 @@ router.register('sucursales', SucursalViewSet, 'sucursales')
 router.register('categorias', CategoriaViewSet, 'categorias')
 router.register('comentarios_respuesta', ComentarioRespuestaViewSet, 'comentarios_respuesta')
 router.register('empleados', EmpleadoViewSet, 'empleados')
+router.register('ventas', VentaViewSet, 'ventas')
+router.register('productos', ProductoViewSet, 'productos')
+
 
 urlpatterns = [
     path('api/', include(router.urls)),
+    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/adminview/sucursales/add', CreateSucursalView.as_view(), name="add-sucursal"),
     path('api/sucursal/<int:sucursal_id>/', SucursalInfo.as_view(), name="sucursal-info"),
     path('api/user-info/', UserInfoView.as_view(), name="user-info"),
@@ -43,6 +51,9 @@ urlpatterns = [
     path('api/create-solicitud/', SolicitudView.as_view(), name="enviar_solicitud"),
     path('api/solicitudes/<int:solicitud_id>/', SolicitudView.as_view(), name="aceptar_solicitud"),
     path('api/solicitudes/<int:solicitud_id>/', SolicitudView.as_view(), name='delete_solicitud'),
+
+    path('api/employee/solicitudes/', SolicitudesEmployeeView.as_view(), name='employee_solicitudes'),
+
     path('api/post/<int:publicacion_id>/solicitudes/', MisSolicitudesView.as_view(), name="mis_solicitudes"),
     path('api/solicitudes/<int:solicitud_id>/cancel/', CancelarSolicitudView.as_view(), name="cencelar_solicitud"),
     path('api/historial/', HistorialDeSolicitudesView.as_view(), name="historial")

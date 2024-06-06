@@ -2,9 +2,11 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_201_CREATED, HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_403_FORBIDDEN, HTTP_406_NOT_ACCEPTABLE, HTTP_409_CONFLICT,HTTP_204_NO_CONTENT
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.shortcuts import get_object_or_404
 from .serializers import *
 from rest_framework.authtoken.models import Token
+from jwt import decode
 from .models import Usuario, Empleado
 from django.contrib.auth import authenticate
 from rest_framework.authentication import TokenAuthentication
@@ -15,7 +17,6 @@ from django.utils import timezone
 from .api import PublicacionViewSet
 from .utils import *
 from datetime import datetime, timedelta
-
 
 @permission_classes([AllowAny])
 class RegisterView(APIView):
@@ -71,24 +72,18 @@ class LoginView(APIView):
         return Response({'token': token.key, 'user': serializer.data}, status=HTTP_200_OK)
 
 
-
 @permission_classes([AllowAny])
 class LoginWorker(APIView):
     def post(self, request):
-        print(request.data)
-        dni = request.data['dni']
+        email = request.data['email']
         password = request.data['password']
-        try:
-            empleado = Empleado.objects.get(pk=dni)           
-            print(empleado.password)
-            if (empleado is not None and empleado.password == password):
-                    
-                    serializer = EmpleadoSerializer(instance=empleado)
-                    return Response(serializer.data, status=HTTP_200_OK)
-            else:
-                return Response({"detail": "Credenciales inválidas"}, status=HTTP_404_NOT_FOUND)
-        except Empleado.DoesNotExist:
-            return Response({"detail": "Credenciales inválidas"}, status=HTTP_404_NOT_FOUND)
+        user = authenticate(request, email=email, password=password)
+        if user is None:
+            return Response({"error": "invalid credentials"}, status=HTTP_400_BAD_REQUEST)
+        serializer = EmpleadoSerializer(instance=user)
+        return Response(serializer.data, status=HTTP_200_OK)
+
+
 
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
@@ -130,10 +125,9 @@ class CreateSucursalView(APIView):
 class CreateEmployeeView(APIView):
     def post(self, request):
         serializer = EmpleadoSerializer(data=request.data)
-        if (serializer.is_valid()):
+        if serializer.is_valid():
             empleado = serializer.save()
             response_data = EmpleadoSerializer(empleado).data
-            print(response_data)
             return Response(response_data, status=HTTP_201_CREATED)
         else:
             return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
@@ -190,18 +184,7 @@ class ReplyView(APIView):
             return Response(serializer.data, status=HTTP_201_CREATED)
         else:
             return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
-    # def delete(self, request, publicacion_id, respuesta_id):
-    #     print(publicacion_id) 
-    #     print(respuesta_id)
-    #     try:
-            
-    #         publicacion = get_object_or_404(Publicacion, pk=publicacion_id)
-    #         respuesta = get_object_or_404(ComentarioRespuesta, pk=respuesta_id, publicacion=publicacion, usuario_propietario=request.user)
-    #     except (Publicacion.DoesNotExist, ComentarioRespuesta.DoesNotExist):
-    #         return Response({"detail": "El comentario o la publicación no está disponible"}, status=HTTP_404_NOT_FOUND)
-        
-    #     respuesta.delete()
-    #     return Response(status=HTTP_204_NO_CONTENT)
+
 
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
@@ -260,8 +243,8 @@ class PostComments(APIView):
         comentarios = serializer.get_comentarios(publicacion)
         return Response(comentarios)
     
-# @authentication_classes([TokenAuthentication])
-# @permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
 class EmployeesList(APIView):
     def get(self, request):
         empleados = Empleado.objects.all()
@@ -269,6 +252,9 @@ class EmployeesList(APIView):
         return Response(serializer.data)
     
 
+
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
 class SearchPostsView(APIView):
     def get(self, request):
         # Obtén el queryset de PublicacionViewSet
@@ -389,10 +375,14 @@ class SolicitudView(APIView):
 @permission_classes([IsAuthenticated])
 class MisSolicitudesView(APIView):
     def get(self, request, publicacion_id):
-        publicacion = Publicacion.objects.get(pk=publicacion_id)
-        serializer = PublicacionSerializer(publicacion)
-        solicitudes = serializer.get_solicitudes(publicacion)
-        return Response(solicitudes)
+        publicacion = get_object_or_404(Publicacion, pk=publicacion_id)
+        solicitudes = SolicitudDeIntercambio.objects.filter(
+            publicacion_deseada=publicacion,
+            estado='ESPERA'
+        ).order_by('fecha_del_intercambio')
+        
+        serializer = SolicitudDeIntercambioSerializer(solicitudes, many=True)
+        return Response(serializer.data)
     
     
 @authentication_classes([TokenAuthentication])
@@ -425,5 +415,34 @@ class CancelarSolicitudView(APIView):
             print("Solicitud eliminada de la base de datos")
             return Response(status=HTTP_204_NO_CONTENT)
         else:
-            return Response(status=HTTP_409_CONFLICT) ##desde el front hacer un if error.status == 409 mostrar mensaje de "para cancelar un truque debe"
-                                                      ## haber más de 24 horas de anticipación              
+            return Response(status=HTTP_409_CONFLICT) 
+
+@permission_classes([AllowAny])
+class SolicitudesEmployeeView(APIView):
+    def get(self, request):
+        print("ASDASDSAAS")
+        email = request.headers.get('X-User-Email')
+        print(email)
+        if not email:
+            return Response({"error": "No se proporcionó el email del usuario."}, status=HTTP_400_BAD_REQUEST)
+
+        try:
+            empleado = Empleado.objects.get(email=email)
+        except Empleado.DoesNotExist:
+            return Response({"error": "No se encontró un empleado asociado a este email."}, status=HTTP_404_NOT_FOUND)
+
+        # Obtener la sucursal donde trabaja el empleado
+        sucursal = empleado.sucursal_de_trabajo
+
+        if not sucursal:
+            return Response({"error": "El empleado no tiene una sucursal asignada."}, status=HTTP_400_BAD_REQUEST)
+
+        # Filtrar las solicitudes de intercambio que pertenezcan a esa sucursal y estén en estado 'PENDIENTE'
+        solicitudes = SolicitudDeIntercambio.objects.filter(
+            publicacion_deseada__sucursal_destino=sucursal,
+            estado='PENDIENTE'
+        )
+        # Serializar las solicitudes
+        serializer = SolicitudDeIntercambioSerializer(solicitudes, many=True)
+
+        return Response(serializer.data, status=HTTP_200_OK)
