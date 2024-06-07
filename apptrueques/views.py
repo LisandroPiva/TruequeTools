@@ -198,16 +198,14 @@ class PostDetailView(APIView):
             return Response({"detail": "La publicación que deseas ver no está disponible"}, status=HTTP_404_NOT_FOUND)
         
 
-@authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])
 class EmployeeDetailView(APIView):
     def get(self, request, employee_id):
         try:
-            employee = Publicacion.objects.get(pk=employee_id)
-            serializer = PublicacionSerializer(employee)
+            employee = Empleado.objects.get(pk=employee_id)
+            serializer = EmpleadoSerializer(employee)
             print(serializer.data)
             return Response(serializer.data, status=HTTP_200_OK)
-        except Publicacion.DoesNotExist:
+        except Empleado.DoesNotExist:
             return Response({"detail": "El empleado que deseas ver no está disponible"}, status=HTTP_404_NOT_FOUND)
     
 @authentication_classes([TokenAuthentication])
@@ -242,8 +240,7 @@ class PostComments(APIView):
         comentarios = serializer.get_comentarios(publicacion)
         return Response(comentarios)
     
-@authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])
+    
 class EmployeesList(APIView):
     def get(self, request):
         empleados = Empleado.objects.all()
@@ -376,6 +373,8 @@ class SolicitudView(APIView):
 @permission_classes([IsAuthenticated])
 class MisSolicitudesView(APIView):
     def get(self, request, publicacion_id):
+        print(request.data)
+        print("ID:",publicacion_id)
         publicacion = get_object_or_404(Publicacion, pk=publicacion_id)
         solicitudes = SolicitudDeIntercambio.objects.filter(
             publicacion_deseada=publicacion,
@@ -455,41 +454,104 @@ class SolicitudesEmployeeView(APIView):
             return Response({"detail": "La solicitud que deseas ver no está disponible"}, status=HTTP_404_NOT_FOUND)
         
 
+@permission_classes([AllowAny])
+class SolicitudesHoyEmployeeView(APIView):
+    def get(self, request):
+        email = request.headers.get('X-User-Email')
+        if not email:
+            return Response({"error": "No se proporcionó el email del usuario."}, status=HTTP_400_BAD_REQUEST)
+
+        try:
+            empleado = Empleado.objects.get(email=email)
+        except Empleado.DoesNotExist:
+            return Response({"error": "No se encontró un empleado asociado a este email."}, status=HTTP_404_NOT_FOUND)
+
+        sucursal = empleado.sucursal_de_trabajo
+
+        if not sucursal:
+            return Response({"error": "El empleado no tiene una sucursal asignada."}, status=HTTP_400_BAD_REQUEST)
+
+        hoy = timezone.now().date()
+
+        solicitudes = SolicitudDeIntercambio.objects.filter(
+            publicacion_deseada__sucursal_destino=sucursal,
+            estado='PENDIENTE',
+            fecha_del_intercambio__date=hoy
+        )
+        serializer = SolicitudDeIntercambioSerializer(solicitudes, many=True)
+        return Response(serializer.data, status=HTTP_200_OK)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+
 class VentasView(APIView):
     def post(self, request, solicitud_id):
         try:
             solicitud = SolicitudDeIntercambio.objects.get(id=solicitud_id)
         except SolicitudDeIntercambio.DoesNotExist:
-            return Response(status=HTTP_404_NOT_FOUND)
-        
+            return Response({"error": "La solicitud de intercambio no existe"}, status=HTTP_404_NOT_FOUND)
+        print(request.data)
         productos_data = request.data.get('productos', [])
-        productos_ids = [producto['producto'] for producto in productos_data]
-        cantidades = [int(producto['cantidad']) for producto in productos_data]
+        productos_validados = []
 
-        # Validación básica de los datos recibidos
-        if not all(isinstance(cantidad, int) and cantidad > 0 for cantidad in cantidades):
-            return Response({"error": "Las cantidades deben ser enteros positivos"}, status=HTTP_400_BAD_REQUEST)
-        
-        try:
-            # Verifica que todos los productos existen
-            productos = Producto.objects.filter(id__in=productos_ids)
-            if len(productos) != len(productos_ids):
-                return Response({"error": "Uno o más productos no existen"}, status=HTTP_400_BAD_REQUEST)
-        
-            # Crea una nueva instancia de Venta
-            venta = Venta.objects.create(publicacion=solicitud)
+        print(productos_data)
+        # Validar los datos recibidos
+        for producto_data in productos_data:
+            producto_id = producto_data.get('id')
+            cantidad_vendida = producto_data.get('cantidad_vendida')
+            print(producto_id)
+            print(cantidad_vendida)
+            # Verificar que se proporcionen tanto el ID del producto como la cantidad vendida
+            if not (producto_id and cantidad_vendida):
+                return Response({"error": "Se requiere tanto el ID del producto como la cantidad vendida"}, status=HTTP_400_BAD_REQUEST)
             
-            # Agrega los productos a la venta con las cantidades proporcionadas
-            for producto_id, cantidad in zip(productos_ids, cantidades):
+            try:
                 producto = Producto.objects.get(id=producto_id)
-                venta.productos.add(producto, through_defaults={'cantidad_vendida': cantidad})
+            except Producto.DoesNotExist:
+                return Response({"error": f"El producto con ID {producto_id} no existe"}, status=HTTP_404_NOT_FOUND)
             
-            # Guarda la venta en la base de datos
+            # Validar que la cantidad vendida sea un entero positivo
+            try:
+                cantidad_vendida = int(cantidad_vendida)
+                if cantidad_vendida <= 0:
+                    raise ValueError()
+            except ValueError:
+                return Response({"error": "La cantidad vendida debe ser un entero positivo"}, status=HTTP_400_BAD_REQUEST)
+            
+            productos_validados.append({"producto": producto, "cantidad_vendida": cantidad_vendida})
+
+        try:
+            # Crear una nueva instancia de Venta
+            venta = Venta.objects.create(intercambio=solicitud)
+            
+            # Agregar los productos a la venta con las cantidades proporcionadas
+            for producto_data in productos_validados:
+                producto = producto_data["producto"]
+                cantidad_vendida = producto_data["cantidad_vendida"]
+                venta_producto = VentaProducto.objects.create(producto=producto, cantidad=cantidad_vendida)
+                venta.productos_vendidos.add(venta_producto)
+            
+            # Guardar la venta en la base de datos
             venta.save()
             
             return Response({"message": "Venta creada exitosamente"}, status=HTTP_201_CREATED)
         except Exception as e:
-            # Maneja cualquier error inesperado
             print(e)
             return Response({"error": "Error al procesar la venta"}, status=HTTP_500_INTERNAL_SERVER_ERROR)
         

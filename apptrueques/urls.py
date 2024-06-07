@@ -46,7 +46,7 @@ urlpatterns = [
     path('api/login-worker/', LoginWorker.as_view(), name="login-worker"),
     path('api/search-posts/', SearchPostsView.as_view(), name='search-posts'),
     path('api/adminview/employees/add', CreateEmployeeView.as_view(), name="add-employee"),
-    path('api/adminview/employees/<int:employee_id>/', EmployeeDetailView.as_view(), name="employee_detail"),
+    path('api/empleados/<int:employee_id>/', EmployeeDetailView.as_view(), name="employee_detail"),
     path('api/misProductos/', MisProductosView.as_view(), name="user_products"),
     path('api/create-solicitud/', SolicitudView.as_view(), name="enviar_solicitud"),
     path('api/solicitudes/<int:solicitud_id>/', SolicitudView.as_view(), name="aceptar_solicitud"),
@@ -54,7 +54,9 @@ urlpatterns = [
 
 
     path('api/employee/solicitudes/', SolicitudesEmployeeView.as_view(), name='employee_solicitudes'),
-    path('api/employee/solicitudes/<int:solicitud_id>/', SolicitudesEmployeeView.as_view(), name='solicitud_detail'),
+    path('api/employee/solicitudes/today/', SolicitudesHoyEmployeeView.as_view(), name='employee_solicitudes_today'),
+     path('api/employee/solicitudes/<int:solicitud_id>/', SolicitudesEmployeeView.as_view(), name='solicitud_detail'),
+
     path('api/employee/solicitudes/<int:solicitud_id>/ventas/', VentasView.as_view(), name="registrar_venta"),
     path('api/employee/solicitudes/<int:solicitud_id>/ventas/', VentasView.as_view(), name="ver_venta"), ##falta el boton "ver ventas" en el front, que le pegue a este ruta con una solicitud GET
 

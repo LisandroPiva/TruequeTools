@@ -57,8 +57,6 @@ class Categoria(models.Model):
         return self.nombre
 
 
-
-
 class Publicacion(models.Model):
     usuario_propietario = models.ForeignKey(Usuario, related_name="publicaciones", on_delete=models.CASCADE)
     titulo = models.CharField(max_length=100)
@@ -76,17 +74,8 @@ class Publicacion(models.Model):
             self.sucursal_destino = self.usuario_propietario.sucursal_favorita
         super().save(*args, **kwargs)
 
-    
-class Producto(models.Model):
-    nombre = models.CharField(max_length=50)
-    precio_unitario = models.FloatField()
-    cantidad_vendida = models.FloatField(null=True, blank=True)
 
-    def __str__(self):
-        return self.nombre
 
-    def getPrecioProducto(self):
-        return self.precio_unitario * self.cantidad_vendida
 
 class SolicitudDeIntercambio(models.Model):
     publicacion_deseada = models.ForeignKey(Publicacion, related_name='solicitudes_recibidas', on_delete=models.CASCADE)
@@ -103,20 +92,30 @@ class SolicitudDeIntercambio(models.Model):
     def __str__(self):
         return self.publicacion_a_intercambiar.usuario_propietario.username
     
-    @property
-    def productos(self):
-        if self.venta:
-            return self.venta.productos.all()
-        else:
-            return []
     
+        
+class Producto(models.Model):
+    nombre = models.CharField(max_length=50)
+    precio_unitario = models.FloatField()
+
+    def __str__(self):
+        return self.nombre
+
+class VentaProducto(models.Model):
+    producto = models.ForeignKey(Producto, on_delete=models.CASCADE)
+    cantidad = models.IntegerField(default=0)
 
 class Venta(models.Model):
-    publicacion = models.OneToOneField(SolicitudDeIntercambio, related_name='venta', on_delete=models.CASCADE, blank=True, null=True)
-    productos = models.ManyToManyField(Producto, related_name='ventas')
+    intercambio = models.OneToOneField(SolicitudDeIntercambio, related_name='venta', on_delete=models.CASCADE, blank=True, null=True)
+    productos_vendidos = models.ManyToManyField(VentaProducto, related_name='ventas')
 
     def precio_total(self):
-        return sum(producto.getPrecioProducto() for producto in self.productos.all())
+        total = 0
+        for venta_producto in self.productos_vendidos.all():
+            producto = venta_producto.producto
+            cantidad = venta_producto.cantidad
+            total += producto.precio_unitario * cantidad
+        return total
 
 
 class ComentarioRespuesta(models.Model):
