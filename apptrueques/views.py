@@ -1,5 +1,5 @@
 from rest_framework.response import Response
-from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_201_CREATED, HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_403_FORBIDDEN, HTTP_406_NOT_ACCEPTABLE, HTTP_409_CONFLICT,HTTP_204_NO_CONTENT
+from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_201_CREATED, HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_403_FORBIDDEN, HTTP_406_NOT_ACCEPTABLE, HTTP_500_INTERNAL_SERVER_ERROR, HTTP_409_CONFLICT,HTTP_204_NO_CONTENT
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -186,8 +186,7 @@ class ReplyView(APIView):
             return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
 
 
-@authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])
+
 class PostDetailView(APIView):
     def get(self, request, publicacion_id):
         try:
@@ -369,6 +368,8 @@ class SolicitudView(APIView):
 
         print(f"Errores del serializer: {serializer.errors}")
         return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
+    
+
         
 
 @authentication_classes([TokenAuthentication])
@@ -395,9 +396,6 @@ class HistorialDeSolicitudesView(APIView):
         # Serializar las solicitudes
         serializer = SolicitudDeIntercambioSerializer(solicitudes, many=True)
         return Response(serializer.data)
-    
-
-
 
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
@@ -419,10 +417,14 @@ class CancelarSolicitudView(APIView):
 
 @permission_classes([AllowAny])
 class SolicitudesEmployeeView(APIView):
-    def get(self, request):
-        print("ASDASDSAAS")
+    def get(self, request, solicitud_id=None):
+        if solicitud_id:
+            return self.get_solicitud(request, solicitud_id)
+        else:
+            return self.get_solicitudes(request)
+
+    def get_solicitudes(self, request):
         email = request.headers.get('X-User-Email')
-        print(email)
         if not email:
             return Response({"error": "No se proporcionó el email del usuario."}, status=HTTP_400_BAD_REQUEST)
 
@@ -431,18 +433,73 @@ class SolicitudesEmployeeView(APIView):
         except Empleado.DoesNotExist:
             return Response({"error": "No se encontró un empleado asociado a este email."}, status=HTTP_404_NOT_FOUND)
 
-        # Obtener la sucursal donde trabaja el empleado
         sucursal = empleado.sucursal_de_trabajo
 
         if not sucursal:
             return Response({"error": "El empleado no tiene una sucursal asignada."}, status=HTTP_400_BAD_REQUEST)
 
-        # Filtrar las solicitudes de intercambio que pertenezcan a esa sucursal y estén en estado 'PENDIENTE'
         solicitudes = SolicitudDeIntercambio.objects.filter(
             publicacion_deseada__sucursal_destino=sucursal,
             estado='PENDIENTE'
         )
-        # Serializar las solicitudes
-        serializer = SolicitudDeIntercambioSerializer(solicitudes, many=True)
 
+        serializer = SolicitudDeIntercambioSerializer(solicitudes, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
+
+    def get_solicitud(self, request, solicitud_id):
+        try:
+            solicitud = SolicitudDeIntercambio.objects.get(pk=solicitud_id)
+            serializer = SolicitudDeIntercambioSerializer(solicitud)
+            return Response(serializer.data, status=HTTP_200_OK)
+        except SolicitudDeIntercambio.DoesNotExist:
+            return Response({"detail": "La solicitud que deseas ver no está disponible"}, status=HTTP_404_NOT_FOUND)
+        
+
+class VentasView(APIView):
+    def post(self, request, solicitud_id):
+        try:
+            solicitud = SolicitudDeIntercambio.objects.get(id=solicitud_id)
+        except SolicitudDeIntercambio.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+        
+        productos_data = request.data.get('productos', [])
+        productos_ids = [producto['producto'] for producto in productos_data]
+        cantidades = [int(producto['cantidad']) for producto in productos_data]
+
+        # Validación básica de los datos recibidos
+        if not all(isinstance(cantidad, int) and cantidad > 0 for cantidad in cantidades):
+            return Response({"error": "Las cantidades deben ser enteros positivos"}, status=HTTP_400_BAD_REQUEST)
+        
+        try:
+            # Verifica que todos los productos existen
+            productos = Producto.objects.filter(id__in=productos_ids)
+            if len(productos) != len(productos_ids):
+                return Response({"error": "Uno o más productos no existen"}, status=HTTP_400_BAD_REQUEST)
+        
+            # Crea una nueva instancia de Venta
+            venta = Venta.objects.create(publicacion=solicitud)
+            
+            # Agrega los productos a la venta con las cantidades proporcionadas
+            for producto_id, cantidad in zip(productos_ids, cantidades):
+                producto = Producto.objects.get(id=producto_id)
+                venta.productos.add(producto, through_defaults={'cantidad_vendida': cantidad})
+            
+            # Guarda la venta en la base de datos
+            venta.save()
+            
+            return Response({"message": "Venta creada exitosamente"}, status=HTTP_201_CREATED)
+        except Exception as e:
+            # Maneja cualquier error inesperado
+            print(e)
+            return Response({"error": "Error al procesar la venta"}, status=HTTP_500_INTERNAL_SERVER_ERROR)
+        
+    def get(self, request, solicitud_id):
+        try:
+            solicitud = SolicitudDeIntercambio.objects.get(id=solicitud_id)
+            ventas = Venta.objects.filter(publicacion=solicitud)
+            serializer = VentaSerializer(ventas, many=True)
+            return Response(serializer.data, status=HTTP_200_OK)
+        except SolicitudDeIntercambio.DoesNotExist:
+            return Response({"error": "La solicitud de intercambio no existe"}, status=HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": "Error al obtener las ventas"}, status=HTTP_500_INTERNAL_SERVER_ERROR)

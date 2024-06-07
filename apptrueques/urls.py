@@ -52,7 +52,13 @@ urlpatterns = [
     path('api/solicitudes/<int:solicitud_id>/', SolicitudView.as_view(), name="aceptar_solicitud"),
     path('api/solicitudes/<int:solicitud_id>/', SolicitudView.as_view(), name='delete_solicitud'),
 
+
     path('api/employee/solicitudes/', SolicitudesEmployeeView.as_view(), name='employee_solicitudes'),
+    path('api/employee/solicitudes/<int:solicitud_id>/', SolicitudesEmployeeView.as_view(), name='solicitud_detail'),
+    path('api/employee/solicitudes/<int:solicitud_id>/ventas/', VentasView.as_view(), name="registrar_venta"),
+    path('api/employee/solicitudes/<int:solicitud_id>/ventas/', VentasView.as_view(), name="ver_venta"), ##falta el boton "ver ventas" en el front, que le pegue a este ruta con una solicitud GET
+
+
 
     path('api/post/<int:publicacion_id>/solicitudes/', MisSolicitudesView.as_view(), name="mis_solicitudes"),
     path('api/solicitudes/<int:solicitud_id>/cancel/', CancelarSolicitudView.as_view(), name="cencelar_solicitud"),
