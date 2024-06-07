@@ -24,6 +24,8 @@ class ProductoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Producto
         fields = '__all__'
+        read_only_fields = ('cantidad_vendida', )
+
 
 class VentaSerializer(serializers.ModelSerializer):
     class Meta:
@@ -45,12 +47,15 @@ class CategoriaSerializer(serializers.ModelSerializer):
 
 
 class SolicitudDeIntercambioSerializer(serializers.ModelSerializer):
+    venta = VentaSerializer(read_only=True)
+
     class Meta:
         model = SolicitudDeIntercambio
         fields = '__all__'
         read_only_fields = ('fecha','fecha_del_intercambio', )
 
-    
+    # def get_venta(self, publicacion):
+    #     return self.to_representation(publicacion)['productos_vendidos']
 
 class ComentarioRespuestaSerializer(serializers.ModelSerializer):
     class Meta:
@@ -68,7 +73,6 @@ class ComentarioSerializer(serializers.ModelSerializer):
 
 class PublicacionSerializer(serializers.ModelSerializer):   
     comentarios = ComentarioSerializer(many=True, read_only=True)
-    venta = VentaSerializer(read_only=True)
     sucursal_destino = SucursalSerializer(read_only=True)
     usuario_propietario = UsuarioSerializer(read_only=True)
     solicitudes_recibidas = SolicitudDeIntercambioSerializer(many=True, read_only=True)
@@ -87,6 +91,5 @@ class PublicacionSerializer(serializers.ModelSerializer):
         ).order_by('fecha_del_intercambio')
         return SolicitudDeIntercambioSerializer(queryset, many=True).data
     
-    def get_venta(self, publicacion):
-        return self.to_representation(publicacion)['productos_vendidos']
+
 

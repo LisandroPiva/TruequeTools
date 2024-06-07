@@ -58,16 +58,6 @@ class Categoria(models.Model):
 
 
 
-class Producto(models.Model):
-    nombre = models.CharField(max_length=50)
-    precio_unitario = models.FloatField()
-    cantidad_vendida = models.FloatField()
-
-    def __str__(self):
-        return self.nombre
-
-    def getPrecioProducto(self):
-        return self.precio_unitario * self.cantidad_vendida
 
 class Publicacion(models.Model):
     usuario_propietario = models.ForeignKey(Usuario, related_name="publicaciones", on_delete=models.CASCADE)
@@ -86,21 +76,17 @@ class Publicacion(models.Model):
             self.sucursal_destino = self.usuario_propietario.sucursal_favorita
         super().save(*args, **kwargs)
 
-    @property
-    def productos(self):
-        if self.venta:
-            return self.venta.productos.all()
-        else:
-            return []
+    
+class Producto(models.Model):
+    nombre = models.CharField(max_length=50)
+    precio_unitario = models.FloatField()
+    cantidad_vendida = models.FloatField(null=True, blank=True)
 
-class Venta(models.Model):
-    publicacion = models.OneToOneField(Publicacion, related_name='venta', on_delete=models.CASCADE, blank=True, null=True)
-    productos = models.ManyToManyField(Producto, related_name='ventas', blank=True)
+    def __str__(self):
+        return self.nombre
 
-    def precio_total(self):
-        return sum(producto.getPrecioProducto() for producto in self.productos.all())
-
-
+    def getPrecioProducto(self):
+        return self.precio_unitario * self.cantidad_vendida
 
 class SolicitudDeIntercambio(models.Model):
     publicacion_deseada = models.ForeignKey(Publicacion, related_name='solicitudes_recibidas', on_delete=models.CASCADE)
@@ -115,8 +101,23 @@ class SolicitudDeIntercambio(models.Model):
     )
     estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='ESPERA')
     def __str__(self):
-        return self.publicacion_a_intercambiar.usuario_propietario
+        return self.publicacion_a_intercambiar.usuario_propietario.username
     
+    @property
+    def productos(self):
+        if self.venta:
+            return self.venta.productos.all()
+        else:
+            return []
+    
+
+class Venta(models.Model):
+    publicacion = models.OneToOneField(SolicitudDeIntercambio, related_name='venta', on_delete=models.CASCADE, blank=True, null=True)
+    productos = models.ManyToManyField(Producto, related_name='ventas')
+
+    def precio_total(self):
+        return sum(producto.getPrecioProducto() for producto in self.productos.all())
+
 
 class ComentarioRespuesta(models.Model):
     contenido = models.TextField()
