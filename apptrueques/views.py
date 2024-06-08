@@ -198,6 +198,29 @@ class PostDetailView(APIView):
             return Response(serializer.data, status=HTTP_200_OK)
         except Publicacion.DoesNotExist:
             return Response({"detail": "La publicación que deseas ver no está disponible"}, status=HTTP_404_NOT_FOUND)
+
+
+class PostDetailAdminView(APIView):
+    def get(self, request, publicacion_id):
+        email = request.headers.get('X-User-Email')
+        if not email:
+            return Response({"error": "No se proporcionó el email del usuario."}, status=HTTP_400_BAD_REQUEST)
+        print(email)
+        try:
+            empleado = Empleado.objects.get(email=email)
+        except Empleado.DoesNotExist:
+            return Response({"error": "No se encontró un administrador asociado a este email."}, status=HTTP_404_NOT_FOUND)
+        
+        if email == 'admin@truequetools.com':
+            try:
+                publicacion = Publicacion.objects.get(pk=publicacion_id)
+                serializer = PublicacionSerializer(publicacion)
+                print(serializer.data)
+                return Response(serializer.data, status=HTTP_200_OK)
+            except Publicacion.DoesNotExist:
+                return Response({"detail": "La publicación que deseas ver no está disponible"}, status=HTTP_404_NOT_FOUND)
+        else:
+            return Response({'detail:':'no tienes permisos para entrar al detalle.'})
         
 
 class EmployeeDetailView(APIView):
@@ -428,7 +451,7 @@ class SolicitudesEmployeeView(APIView):
         email = request.headers.get('X-User-Email')
         if not email:
             return Response({"error": "No se proporcionó el email del usuario."}, status=HTTP_400_BAD_REQUEST)
-
+        print(email)
         try:
             empleado = Empleado.objects.get(email=email)
         except Empleado.DoesNotExist:
@@ -437,12 +460,18 @@ class SolicitudesEmployeeView(APIView):
         sucursal = empleado.sucursal_de_trabajo
 
         if not sucursal:
-            return Response({"error": "El empleado no tiene una sucursal asignada."}, status=HTTP_400_BAD_REQUEST)
-
-        solicitudes = SolicitudDeIntercambio.objects.filter(
-            publicacion_deseada__sucursal_destino=sucursal,
-            estado='PENDIENTE'
+            if email == 'admin@truequetools.com':
+                solicitudes = SolicitudDeIntercambio.objects.filter(
+                estado='PENDIENTE',
         )
+                serializer = SolicitudDeIntercambioSerializer(solicitudes, many=True)
+                return Response(serializer.data, status=HTTP_200_OK)
+            return Response({"error": "El empleado no tiene una sucursal asignada."}, status=HTTP_400_BAD_REQUEST)
+        else:
+            solicitudes = SolicitudDeIntercambio.objects.filter(
+                publicacion_deseada__sucursal_destino=sucursal,
+                estado='PENDIENTE',
+            )
 
         serializer = SolicitudDeIntercambioSerializer(solicitudes, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
@@ -508,20 +537,25 @@ class SolicitudesHoyEmployeeView(APIView):
             empleado = Empleado.objects.get(email=email)
         except Empleado.DoesNotExist:
             return Response({"error": "No se encontró un empleado asociado a este email."}, status=HTTP_404_NOT_FOUND)
-
+        
+        hoy = timezone.localtime(timezone.now()).date()
         sucursal = empleado.sucursal_de_trabajo
 
         if not sucursal:
-            return Response({"error": "El empleado no tiene una sucursal asignada."}, status=HTTP_400_BAD_REQUEST)
-
-        hoy = timezone.localtime(timezone.now()).date()
-
-        print("HOY: ",hoy)
-        solicitudes = SolicitudDeIntercambio.objects.filter(
-            publicacion_deseada__sucursal_destino=sucursal,
-            estado='PENDIENTE',
-            fecha_del_intercambio__date=hoy
+            if email == 'admin@truequetools.com':
+                solicitudes = SolicitudDeIntercambio.objects.filter(
+                estado='PENDIENTE',
+                fecha_del_intercambio__date=hoy
         )
+                serializer = SolicitudDeIntercambioSerializer(solicitudes, many=True)
+                return Response(serializer.data, status=HTTP_200_OK)
+            return Response({"error": "El empleado no tiene una sucursal asignada."}, status=HTTP_400_BAD_REQUEST)
+        else:
+            solicitudes = SolicitudDeIntercambio.objects.filter(
+                publicacion_deseada__sucursal_destino=sucursal,
+                estado='PENDIENTE',
+                fecha_del_intercambio__date=hoy
+            )
         serializer = SolicitudDeIntercambioSerializer(solicitudes, many=True)
         print(serializer.data)
         return Response(serializer.data, status=HTTP_200_OK)
@@ -597,3 +631,57 @@ class VentasView(APIView):
             return Response({"error": "La solicitud de intercambio no existe"}, status=HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({"error": "Error al obtener las ventas"}, status=HTTP_500_INTERNAL_SERVER_ERROR)
+
+class PostListAdmin(APIView):
+    def get(self, request):
+        email = request.headers.get('X-User-Email')
+        if not email:
+            return Response({"error": "No se proporcionó el email del usuario."}, status=HTTP_400_BAD_REQUEST)
+        print(email)
+        try:
+            empleado = Empleado.objects.get(email=email)
+        except Empleado.DoesNotExist:
+            return Response({"error": "No se encontró un empleado asociado a este email."}, status=HTTP_404_NOT_FOUND)
+        
+
+        publicaciones_deseadas_no_espera = SolicitudDeIntercambio.objects.exclude(estado='ESPERA').values_list('publicacion_deseada', flat=True).distinct()
+        publicaciones_a_intercambiar_no_espera = SolicitudDeIntercambio.objects.exclude(estado='ESPERA').values_list('publicacion_a_intercambiar', flat=True).distinct()
+        publicaciones_no_espera = set(publicaciones_deseadas_no_espera).union(set(publicaciones_a_intercambiar_no_espera))
+        queryset = Publicacion.objects.exclude(id__in=publicaciones_no_espera)
+
+        serializer = PublicacionSerializer(queryset, many=True)
+        return Response(serializer.data, status=HTTP_200_OK)
+        
+
+
+class CommentAdminView(APIView):
+    def get(self, request, publicacion_id):
+        try:
+            publicacion = get_object_or_404(Publicacion, pk=publicacion_id)
+        except Publicacion.DoesNotExist:
+            return Response({"detail": "La publicación que deseas comentar ya no está disponible"}, status=HTTP_404_NOT_FOUND)
+        try:
+            publicacion = get_object_or_404(Publicacion, pk=publicacion_id)
+        except Publicacion.DoesNotExist:
+            return Response({"detail": "La publicación no está disponible"}, status=HTTP_404_NOT_FOUND)
+        serializer = PublicacionSerializer(publicacion)
+        comentarios = serializer.get_comentarios(publicacion)
+        return Response(comentarios)
+        
+    def delete(self, request, publicacion_id, comentario_id):
+        email = request.headers.get('X-User-Email')
+        if not email:
+            return Response({"error": "No se proporcionó el email del usuario."}, status=HTTP_400_BAD_REQUEST)
+        
+        if email == 'admin@truequetools.com':
+            try:
+                publicacion = get_object_or_404(Publicacion, pk=publicacion_id)
+                comentario = get_object_or_404(Comentario, pk=comentario_id, publicacion=publicacion)
+            except (Publicacion.DoesNotExist, Comentario.DoesNotExist):
+                return Response({"detail": "El comentario o la publicación no está disponible"}, status=HTTP_404_NOT_FOUND)
+
+            comentario.delete()
+            return Response(status=HTTP_204_NO_CONTENT)
+        else:
+            # Si el usuario no es administrador, devolver un error de autorización
+            return Response({"error": "No tienes permiso para eliminar este comentario."}, status=HTTP_403_FORBIDDEN)

@@ -36,7 +36,11 @@ urlpatterns = [
     path('api/profile/', ProfileView.as_view(), name='profile'),
     path('api/createPost/', CreatePostView.as_view(), name='createpost'),
     path('api/post/<int:publicacion_id>/', PostDetailView.as_view(), name='post_detail'),
+    path('api/post-admin/<int:publicacion_id>/', PostDetailAdminView.as_view(), name='post_detail_admin'),
+    path('api/post-admin/<int:publicacion_id>/comments/', CommentAdminView.as_view(), name='post_comment_admin'),
+    path('api/post-admin/<int:publicacion_id>/comments/<int:comentario_id>/delete/', CommentAdminView.as_view(), name='delete_comment'),
 
+    path('api/admin/publicaciones/', PostListAdmin.as_view(), name="postlist_admin"),
     path('api/post/<int:publicacion_id>/comments/', CommentView.as_view(), name='post_comment'),
     path('api/post/<int:publicacion_id>/comments/<int:comentario_id>/delete/', CommentView.as_view(), name='delete_comment'),
     path('api/post/<int:publicacion_id>/comments/<int:comentario_id>/', ReplyView.as_view(), name='post_reply'),
@@ -55,7 +59,7 @@ urlpatterns = [
 
     path('api/employee/solicitudes/', SolicitudesEmployeeView.as_view(), name='employee_solicitudes'),
     path('api/employee/solicitudes/today/', SolicitudesHoyEmployeeView.as_view(), name='employee_solicitudes_today'),
-     path('api/employee/solicitudes/<int:solicitud_id>/', SolicitudesEmployeeView.as_view(), name='solicitud_detail'),
+    path('api/employee/solicitudes/<int:solicitud_id>/', SolicitudesEmployeeView.as_view(), name='solicitud_detail'),
 
     path('api/employee/solicitudes/<int:solicitud_id>/ventas/', VentasView.as_view(), name="registrar_venta"),
     path('api/employee/solicitudes/<int:solicitud_id>/ventas/', VentasView.as_view(), name="ver_venta"), ##falta el boton "ver ventas" en el front, que le pegue a este ruta con una solicitud GET
