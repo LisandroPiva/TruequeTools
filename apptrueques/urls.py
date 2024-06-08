@@ -59,7 +59,7 @@ urlpatterns = [
 
     path('api/employee/solicitudes/<int:solicitud_id>/ventas/', VentasView.as_view(), name="registrar_venta"),
     path('api/employee/solicitudes/<int:solicitud_id>/ventas/', VentasView.as_view(), name="ver_venta"), ##falta el boton "ver ventas" en el front, que le pegue a este ruta con una solicitud GET
-
+    
 
 
     path('api/post/<int:publicacion_id>/solicitudes/', MisSolicitudesView.as_view(), name="mis_solicitudes"),

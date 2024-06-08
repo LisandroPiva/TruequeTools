@@ -17,6 +17,8 @@ from django.utils import timezone
 from .api import PublicacionViewSet
 from .utils import *
 from datetime import datetime, timedelta
+from django.db import transaction
+
 
 @permission_classes([AllowAny])
 class RegisterView(APIView):
@@ -453,6 +455,47 @@ class SolicitudesEmployeeView(APIView):
         except SolicitudDeIntercambio.DoesNotExist:
             return Response({"detail": "La solicitud que deseas ver no está disponible"}, status=HTTP_404_NOT_FOUND)
         
+    def patch(self, request, solicitud_id):
+        try:
+            solicitud = SolicitudDeIntercambio.objects.get(pk=solicitud_id)
+        except SolicitudDeIntercambio.DoesNotExist:
+            return Response({"detail": "La solicitud que deseas ver no está disponible"}, status=HTTP_404_NOT_FOUND)
+        
+        action = request.data.get('action')
+        if not action:
+            return Response({"detail": "No se ha proporcionado ninguna acción"}, status=HTTP_400_BAD_REQUEST)
+
+        if action == 'accept':
+            data = {'estado': 'EXITOSA'}
+        elif action == 'reject':
+            data = {'estado': 'RECHAZADA'}
+        else:
+            return Response({"detail": "Acción no válida"}, status=HTTP_400_BAD_REQUEST)
+        
+        serializer = SolicitudDeIntercambioSerializer(solicitud, data=data, partial=True)
+        
+        try:
+            user1 = Usuario.objects.get(pk=solicitud.publicacion_a_intercambiar.usuario_propietario.id)
+            user2 = Usuario.objects.get(pk=solicitud.publicacion_deseada.usuario_propietario.id)
+        except Usuario.DoesNotExist:
+            return Response({"detail": "Uno de los dos usuarios no existe."}, status=HTTP_404_NOT_FOUND)
+
+        with transaction.atomic():
+            if action == 'accept':
+                user1.reputacion += 100
+                user2.reputacion += 100
+
+                user1.save()
+                user2.save()
+
+            if serializer.is_valid():
+                serializer.save()
+                print(f"Estado actualizado a: {solicitud.estado}")
+            else:
+                transaction.set_rollback(True)
+                return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
+
+        return Response(status=HTTP_204_NO_CONTENT)
 
 @permission_classes([AllowAny])
 class SolicitudesHoyEmployeeView(APIView):
@@ -471,32 +514,17 @@ class SolicitudesHoyEmployeeView(APIView):
         if not sucursal:
             return Response({"error": "El empleado no tiene una sucursal asignada."}, status=HTTP_400_BAD_REQUEST)
 
-        hoy = timezone.now().date()
+        hoy = timezone.localtime(timezone.now()).date()
 
+        print("HOY: ",hoy)
         solicitudes = SolicitudDeIntercambio.objects.filter(
             publicacion_deseada__sucursal_destino=sucursal,
             estado='PENDIENTE',
             fecha_del_intercambio__date=hoy
         )
         serializer = SolicitudDeIntercambioSerializer(solicitudes, many=True)
+        print(serializer.data)
         return Response(serializer.data, status=HTTP_200_OK)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
         
 
@@ -557,9 +585,13 @@ class VentasView(APIView):
         
     def get(self, request, solicitud_id):
         try:
-            solicitud = SolicitudDeIntercambio.objects.get(id=solicitud_id)
-            ventas = Venta.objects.filter(publicacion=solicitud)
+            solicitud = get_object_or_404(SolicitudDeIntercambio, pk=solicitud_id)
+    
+            ventas = Venta.objects.filter(intercambio=solicitud) 
+            print(ventas)   
             serializer = VentaSerializer(ventas, many=True)
+            print(serializer.data)
+            print(ventas)
             return Response(serializer.data, status=HTTP_200_OK)
         except SolicitudDeIntercambio.DoesNotExist:
             return Response({"error": "La solicitud de intercambio no existe"}, status=HTTP_404_NOT_FOUND)
