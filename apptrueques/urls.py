@@ -56,7 +56,7 @@ urlpatterns = [
     path('api/solicitudes/<int:solicitud_id>/', SolicitudView.as_view(), name="aceptar_solicitud"),
     path('api/solicitudes/<int:solicitud_id>/', SolicitudView.as_view(), name='delete_solicitud'),
 
-
+    
     path('api/employee/solicitudes/', SolicitudesEmployeeView.as_view(), name='employee_solicitudes'),
     path('api/employee/solicitudes/today/', SolicitudesHoyEmployeeView.as_view(), name='employee_solicitudes_today'),
     path('api/employee/solicitudes/<int:solicitud_id>/', SolicitudesEmployeeView.as_view(), name='solicitud_detail'),
