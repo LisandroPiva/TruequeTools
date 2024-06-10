@@ -6,19 +6,25 @@ class SucursalSerializer(serializers.ModelSerializer):
         model = Sucursal
         fields = '__all__'
 class EmpleadoSerializer(serializers.ModelSerializer):
-    sucursal_de_trabajo = serializers.PrimaryKeyRelatedField(queryset=Sucursal.objects.all(), write_only=True)
+    sucursal_de_trabajo = serializers.PrimaryKeyRelatedField(queryset=Sucursal.objects.all(), write_only=True, required=False, allow_null=True)
     sucursal = SucursalSerializer(read_only=True, source='sucursal_de_trabajo')
 
     class Meta:
         model = Empleado
         fields = ('id', 'email', 'sucursal_de_trabajo', 'sucursal', 'password', 'is_staff')
         read_only_fields = ('is_staff', )
-        extra_kwargs = {'password': {'write_only': True}}
+        extra_kwargs = {
+            'password': {'write_only': True},
+        }
 
     def create(self, validated_data):
         validated_data['is_staff'] = True
-        sucursal = validated_data.pop('sucursal_de_trabajo')
-        empleado = Empleado.objects.create(sucursal_de_trabajo=sucursal, **validated_data)
+        sucursal = validated_data.pop('sucursal_de_trabajo', None)  # Utiliza None como valor por defecto
+        empleado = Empleado.objects.create(**validated_data)
+        
+        if sucursal:
+            empleado.sucursal_de_trabajo = sucursal
+        
         empleado.set_password(validated_data['password'])
         empleado.save()
         return empleado

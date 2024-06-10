@@ -21,12 +21,12 @@ class Usuario(AbstractUser):
         return self.username
 
 class Empleado(AbstractUser):
-    sucursal_de_trabajo = models.ForeignKey(Sucursal, related_name="empleados", on_delete=models.CASCADE, null=True)
+    sucursal_de_trabajo = models.ForeignKey(Sucursal, related_name="empleados", on_delete=models.CASCADE, null=True, blank=True)
     email = models.EmailField(unique=True, default='')
     username = models.CharField(max_length=150, unique=False)
     USERNAME_FIELD = 'email'
 
-    REQUIRED_FIELDS = ['username', 'password', 'sucursal_de_trabajo', ]
+    REQUIRED_FIELDS = ['username', 'password', ]
 
     groups = models.ManyToManyField(
         Group,
