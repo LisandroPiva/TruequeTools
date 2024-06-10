@@ -16,7 +16,7 @@ from django.utils.dateparse import parse_datetime
 from django.utils import timezone
 from .api import PublicacionViewSet
 from .utils import *
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from django.db import transaction
 
 
@@ -335,6 +335,12 @@ class SolicitudView(APIView):
                     return Response({'error': 'Formato de fecha inválido.'}, status=HTTP_404_NOT_FOUND)
                 if fecha < datetime.today():
                     return Response({'error': 'Formato de fecha inválido.'}, status=HTTP_404_NOT_FOUND)
+                hora_inicio = time(8, 0)  # 8 AM
+                hora_fin = time(20, 0)    # 8 PM
+                if not (hora_inicio <= fecha.time() <= hora_fin):
+                    return Response({'error': 'El servicio está cerrado en ese horario. El horario de atención es de 8:00 a 20:00.'}, status=HTTP_409_CONFLICT)
+            else:
+                return Response({'error': 'Formato de fecha inválido.'}, status=HTTP_404_NOT_FOUND)
 
             
             solicitud = SolicitudDeIntercambio.objects.create(
@@ -497,7 +503,7 @@ class SolicitudesEmployeeView(APIView):
         if action == 'accept':
             data = {'estado': 'EXITOSA'}
         elif action == 'reject':
-            data = {'estado': 'RECHAZADA'}
+            data = {'estado': 'FALLIDA'}
         else:
             return Response({"detail": "Acción no válida"}, status=HTTP_400_BAD_REQUEST)
         
