@@ -35,6 +35,9 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     serializer_class = UsuarioSerializer
     authentication_classes = [TokenAuthentication]
 
+    def get_queryset(self):
+        return super().get_queryset()
+
 
 class PublicacionViewSet(viewsets.ModelViewSet):
     serializer_class = PublicacionSerializer

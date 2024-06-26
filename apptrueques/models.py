@@ -14,6 +14,8 @@ class Usuario(AbstractUser):
     sucursal_favorita = models.ForeignKey(Sucursal, related_name="usuarios", on_delete=models.CASCADE, null=True)
     username = models.CharField(max_length=150, unique=False)
     email = models.EmailField(unique=True)
+    avatar = models.ImageField(upload_to="images", default="userNoProfilePicture.jpg") 
+    bloqueado = models.BooleanField(default=False)
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username', 'password', 'fecha_de_nacimiento']
 
@@ -64,8 +66,8 @@ class Publicacion(models.Model):
     descripcion = models.TextField()
     categoria = models.ForeignKey(Categoria, on_delete=models.CASCADE)
     sucursal_destino = models.ForeignKey(Sucursal, related_name="publicaciones", on_delete=models.CASCADE, blank=True, null=True)
-    imagen = models.ImageField(upload_to="images", null=True, blank=True)
-
+    imagen = models.ImageField(upload_to="images", default="noPostImage.png")
+    fecha_fin_promocion = models.DateTimeField(blank=True, null=True)
     def __str__(self):
         return self.titulo
     
@@ -73,9 +75,6 @@ class Publicacion(models.Model):
         if not self.sucursal_destino:
             self.sucursal_destino = self.usuario_propietario.sucursal_favorita
         super().save(*args, **kwargs)
-
-
-
 
 class SolicitudDeIntercambio(models.Model):
     publicacion_deseada = models.ForeignKey(Publicacion, related_name='solicitudes_recibidas', on_delete=models.CASCADE)
@@ -91,7 +90,6 @@ class SolicitudDeIntercambio(models.Model):
     estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='ESPERA')
     def __str__(self):
         return self.publicacion_a_intercambiar.usuario_propietario.username
-    
     
         
 class Producto(models.Model):

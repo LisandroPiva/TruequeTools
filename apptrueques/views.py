@@ -14,7 +14,7 @@ from rest_framework.decorators import authentication_classes, permission_classes
 from rest_framework.exceptions import ValidationError
 from django.utils.dateparse import parse_datetime
 from django.utils import timezone
-from .api import PublicacionViewSet
+from .api import *
 from .utils import *
 from datetime import datetime, timedelta, time
 from django.db import transaction
@@ -67,6 +67,11 @@ class LoginView(APIView):
         email = request.data['email']
         password = request.data['password']
         user = authenticate(request, email=email, password=password)      
+        user_instance = Usuario.objects.get(email=email)
+
+        if user_instance.bloqueado:
+            return Response({"error": "El usuario se encuentra bloqueado"}, status=HTTP_403_FORBIDDEN)
+        
         if user is None:
             return Response({"error": "invalid credentials"}, status=HTTP_400_BAD_REQUEST)
         token, created = Token.objects.get_or_create(user=user)
@@ -291,6 +296,38 @@ class SearchPostsView(APIView):
         # Serializa y retorna la respuesta
         serializer = PublicacionSerializer(queryset, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
+    
+class UserView(APIView):
+    def get(self, request):
+        # Obtén el queryset de UsuarioViewSet
+        viewset = UsuarioViewSet()
+        viewset.request = request  # Necesario si el método get_queryset depende del request
+        queryset = viewset.get_queryset()
+        
+        # Filtra por nombre si hay un query param 'q'
+        query = request.query_params.get('q', None)
+        if query:
+            queryset = queryset.filter(email__icontains=query)
+        serializer = UsuarioSerializer(queryset, many=True)
+        return Response(serializer.data, status=HTTP_200_OK)
+    
+    def patch(self, request, usuario_id):
+        try:
+            usuario = Usuario.objects.get(id=usuario_id)
+        except Usuario.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+        
+        data = {'bloqueado': True}
+        if usuario.bloqueado:
+            data = {'bloqueado': False}
+            
+        serializer = UsuarioSerializer(usuario, data=data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(status=HTTP_204_NO_CONTENT)
+        return Response(status=HTTP_400_BAD_REQUEST)    
+
+    
 
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])

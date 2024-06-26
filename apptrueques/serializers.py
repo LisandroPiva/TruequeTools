@@ -56,7 +56,7 @@ class UsuarioSerializer(serializers.ModelSerializer):
     sucursal_favorita = SucursalSerializer(read_only=True)    
     class Meta:
         model = Usuario
-        fields = ('id', 'username', 'email', 'fecha_de_nacimiento', 'sucursal_favorita', 'reputacion', 'is_staff')
+        fields = ('id', 'username', 'email', 'fecha_de_nacimiento', 'sucursal_favorita', 'reputacion', 'is_staff', 'bloqueado', 'avatar', )
         read_only_fields = ('reputacion', 'is_staff')
         extra_kwargs = {'password': {'write_only': True}}
 
