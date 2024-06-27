@@ -36,6 +36,15 @@ class UsuarioViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return super().get_queryset()
+    
+class NotificacionViewSet(viewsets.ModelViewSet):
+    queryset = Notificacion.objects.all()
+    permission_classes = [permissions.AllowAny]    
+    serializer_class = NotificacionSerializer
+    authentication_classes = [TokenAuthentication]
+
+    def get_queryset(self):
+        return super().get_queryset()
 
 
 class PublicacionViewSet(viewsets.ModelViewSet):

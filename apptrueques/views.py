@@ -435,13 +435,24 @@ class SolicitudView(APIView):
         except Publicacion.DoesNotExist:
             return Response({'error': 'Publicación no encontrada.'}, status=HTTP_404_NOT_FOUND)
          
-    def delete(self, request, solicitud_id): ##este método se ejecuta cuando rechaza una solicitud
+    def delete(self, request, solicitud_id):
+        print("Entrando al método delete")
         try:
-            solicitud = SolicitudDeIntercambio.objects.get(id=solicitud_id, usuario=request.user)
+            solicitud = get_object_or_404(SolicitudDeIntercambio, id=solicitud_id, usuario=request.user)
+            print(solicitud)
+            user = solicitud.publicacion_a_intercambiar.usuario_propietario
+            contenido = f"El usuario {request.user.username} ha rechazado tu solicitud de intercambio :("
+            notificacion = Notificacion.objects.create(contenido=contenido)
+            user.notificaciones.add(notificacion)
+            user.save()
             solicitud.delete()
+            print("Solicitud eliminada correctamente")
             return Response(status=HTTP_204_NO_CONTENT)
         except SolicitudDeIntercambio.DoesNotExist:
             return Response({'error': 'Solicitud no encontrada.'}, status=HTTP_404_NOT_FOUND)
+        except Exception as e:
+            print("Error:", e)
+            return Response({'error': 'Ha ocurrido un error al procesar la solicitud.'}, status=HTTP_500_INTERNAL_SERVER_ERROR)
 
     def patch(self, request, solicitud_id):
         print("Entrando al método patch")
@@ -476,6 +487,15 @@ class SolicitudView(APIView):
         print(f"Errores del serializer: {serializer.errors}")
         return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
     
+    def get(self, request):
+        solicitudes = SolicitudDeIntercambio.objects.filter(
+            publicacion_a_intercambiar__usuario_propietario=request.user,
+            estado='ESPERA'
+        ).order_by('-fecha_del_intercambio')
+        
+        serializer = SolicitudDeIntercambioSerializer(solicitudes, many=True)
+        return Response(serializer.data, status=HTTP_200_OK)
+        
 
         
 

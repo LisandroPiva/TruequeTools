@@ -8,6 +8,10 @@ class Sucursal(models.Model):
     def __str__(self):
         return self.nombre
 
+class Notificacion(models.Model):
+    contenido = models.CharField(max_length=200)
+    leida = models.BooleanField(default=False)
+
 class Usuario(AbstractUser):
     reputacion = models.IntegerField(null=True, default=0)
     fecha_de_nacimiento = models.DateField()
@@ -18,7 +22,7 @@ class Usuario(AbstractUser):
     bloqueado = models.BooleanField(default=False)
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username', 'password', 'fecha_de_nacimiento']
-
+    notificaciones = models.ManyToManyField(Notificacion, related_name="usuarios")
     def __str__(self):
         return self.username
 

@@ -50,13 +50,18 @@ class VentaSerializer(serializers.ModelSerializer):
         model = Venta
         fields = '__all__'
 
-
+class NotificacionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notificacion
+        fields ="__all__"
 
 class UsuarioSerializer(serializers.ModelSerializer):
     sucursal_favorita = SucursalSerializer(read_only=True)    
+    notificaciones = NotificacionSerializer(many=True, read_only=True)  
+
     class Meta:
         model = Usuario
-        fields = ('id', 'username', 'email', 'fecha_de_nacimiento', 'sucursal_favorita', 'reputacion', 'is_staff', 'bloqueado', 'avatar', )
+        fields = ('id', 'username', 'email', 'fecha_de_nacimiento', 'sucursal_favorita', 'reputacion', 'is_staff', 'bloqueado', 'avatar', 'notificaciones',  )
         read_only_fields = ('reputacion', 'is_staff')
         extra_kwargs = {'password': {'write_only': True}}
 

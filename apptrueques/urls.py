@@ -22,6 +22,8 @@ router.register('comentarios_respuesta', ComentarioRespuestaViewSet, 'comentario
 router.register('empleados', EmpleadoViewSet, 'empleados')
 router.register('ventas', VentaViewSet, 'ventas')
 router.register('productos', ProductoViewSet, 'productos')
+router.register('notificaciones', NotificacionViewSet, 'notificaciones')
+
 
 
 urlpatterns = [
@@ -31,7 +33,7 @@ urlpatterns = [
     path('api/adminview/sucursales/add', CreateSucursalView.as_view(), name="add-sucursal"),
     path('api/adminview/sucursales/', CreateSucursalView.as_view(), name="search-sucursal"),
 
-    path('api/sucursales/<int:sucursal_id>/', SucursalInfo.as_view(), name="sucursal-info"),
+    path('api/sucursal/<int:sucursal_id>/', SucursalInfo.as_view(), name="sucursal-info"),
     path('api/user-info/', UserInfoView.as_view(), name="user-info"),
     path('api/register/', RegisterView.as_view(), name='register'),
     path('api/login/', LoginView.as_view(), name='login'),
@@ -61,7 +63,8 @@ urlpatterns = [
     path('api/create-solicitud/', SolicitudView.as_view(), name="enviar_solicitud"),
     path('api/solicitudes/<int:solicitud_id>/', SolicitudView.as_view(), name="aceptar_solicitud"),
     path('api/solicitudes/<int:solicitud_id>/', SolicitudView.as_view(), name='delete_solicitud'),
-    
+    path('api/mis-solicitudes/', SolicitudView.as_view(), name='ver_solicitudes'),
+
     path('api/employee/solicitudes/success/', TruequesExitososView.as_view(), name="trueques_exitosos"),
     path('api/employee/solicitudes/failure/', TruequesFallidosView.as_view(), name="trueques_fallidos"),
 
