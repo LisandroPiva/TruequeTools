@@ -11,7 +11,6 @@ class SolicitudDeIntercambioViewSet(viewsets.ModelViewSet):
     queryset = SolicitudDeIntercambio.objects.all().order_by('fecha_del_intercambio')
     permission_classes = [permissions.IsAuthenticated]    
     authentication_classes = [TokenAuthentication]
-
     # def get_queryset(self, request):
     #     # Obtener el parámetro de la URL que contiene la sucursal
     #     sucursal_param = request.query_params.get('sucursalTrabajo', None)
@@ -58,7 +57,6 @@ class PublicacionViewSet(viewsets.ModelViewSet):
         queryset = Publicacion.objects.exclude(id__in=publicaciones_no_espera)
 
         return queryset.order_by('-fecha').distinct()
-
 
 class ComentarioViewSet(viewsets.ModelViewSet):
     queryset = Comentario.objects.all()

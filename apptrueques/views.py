@@ -126,12 +126,19 @@ class CreateSucursalView(APIView):
             return Response(response_data, status=HTTP_201_CREATED)
         else:
             return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
+
+    def get(self, request):
+        query = request.query_params.get('q', None)
+        if query:
+            sucursales = Sucursal.objects.filter(nombre__icontains=query)
+        else:
+            sucursales = Sucursal.objects.all()
+        serializer = SucursalSerializer(sucursales, many=True)
+        return Response(serializer.data, status=HTTP_200_OK)
         
 
-class CreateEmployeeView(APIView):
+class EmployeeView(APIView):
     def post(self, request):
-        print(request.data)
-        
         serializer = EmpleadoSerializer(data=request.data)
         if serializer.is_valid():
             empleado = serializer.save()
@@ -139,6 +146,19 @@ class CreateEmployeeView(APIView):
             return Response(response_data, status=HTTP_201_CREATED)
         else:
             return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
+        
+    def delete(self, request, employee_id):
+        try:
+            empleado = Empleado.objects.get(pk=employee_id)
+            empleado.delete()
+            return Response(status=HTTP_200_OK)
+        except Empleado.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+
+
+
+
+
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 class CommentView(APIView):
@@ -228,12 +248,12 @@ class PostDetailAdminView(APIView):
             return Response({'detail:':'no tienes permisos para entrar al detalle.'})
         
 
+@permission_classes([AllowAny])
 class EmployeeDetailView(APIView):
     def get(self, request, employee_id):
         try:
             employee = Empleado.objects.get(pk=employee_id)
             serializer = EmpleadoSerializer(employee)
-            print(serializer.data)
             return Response(serializer.data, status=HTTP_200_OK)
         except Empleado.DoesNotExist:
             return Response({"detail": "El empleado que deseas ver no está disponible"}, status=HTTP_404_NOT_FOUND)
@@ -253,7 +273,25 @@ class SucursalInfo(APIView):
             sucursal = Sucursal.objects.get(pk=sucursal_id)
             serializer = SucursalSerializer(sucursal)
             return Response(serializer.data, status=HTTP_200_OK)
-        except Publicacion.DoesNotExist:
+        except Sucursal.DoesNotExist:
+            return Response({"detail": "No existe sucursal con ese id"}, status=HTTP_404_NOT_FOUND)
+
+    def delete(self, request, sucursal_id):
+        try:
+            sucursal = Sucursal.objects.get(pk=sucursal_id)
+            sucursal.delete()
+            return Response(status=HTTP_204_NO_CONTENT)
+        except Sucursal.DoesNotExist:
+            return Response({"detail": "No existe sucursal con ese id"}, status=HTTP_404_NOT_FOUND)
+        
+    def patch(self, request, sucursal_id):
+        try:
+            sucursal = Sucursal.objects.get(pk=sucursal_id)
+            serializer = SucursalSerializer(sucursal, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(status=HTTP_200_OK)
+        except Sucursal.DoesNotExist:
             return Response({"detail": "No existe sucursal con ese id"}, status=HTTP_404_NOT_FOUND)
 
 
@@ -272,10 +310,14 @@ class PostComments(APIView):
     
     
 class EmployeesList(APIView):
-    def get(self, request):
-        empleados = Empleado.objects.all()
-        serializer = EmpleadoSerializer(empleados, many=True)
-        return Response(serializer.data)
+    def get(self, request   ):
+        query = request.query_params.get('q', None)
+        if query is not None:
+            employees = Empleado.objects.filter(email__icontains=query)
+        else:
+            employees = Empleado.objects.all()
+        serializer = EmpleadoSerializer(employees, many=True)
+        return Response(serializer.data, status=HTTP_200_OK)
     
 
 
@@ -603,6 +645,40 @@ class SolicitudesHoyEmployeeView(APIView):
         print(serializer.data)
         return Response(serializer.data, status=HTTP_200_OK)
 
+@permission_classes([AllowAny])
+class TruequesExitososView(APIView):
+    def get(self,request):
+        email = request.headers.get('X-User-Email')
+        if not email:
+            return Response({"error": "No se proporcionó el email del usuario."}, status=HTTP_400_BAD_REQUEST)
+        try:
+            empleado = Empleado.objects.get(email=email)
+        except Empleado.DoesNotExist:
+            return Response({"error": "No se encontró un empleado asociado a este email."}, status=HTTP_404_NOT_FOUND)
+        
+        solicitudes = SolicitudDeIntercambio.objects.filter(
+            estado='EXITOSA',
+        ).order_by('fecha_del_intercambio').distinct()
+        serializer = SolicitudDeIntercambioSerializer(solicitudes, many=True)
+        return Response(serializer.data, status=HTTP_200_OK)
+
+@permission_classes([AllowAny])
+class TruequesFallidosView(APIView):
+    def get(self,request):
+        email = request.headers.get('X-User-Email')
+        if not email:
+            return Response({"error": "No se proporcionó el email del usuario."}, status=HTTP_400_BAD_REQUEST)
+        try:
+            empleado = Empleado.objects.get(email=email)
+        except Empleado.DoesNotExist:
+            return Response({"error": "No se encontró un empleado asociado a este email."}, status=HTTP_404_NOT_FOUND)
+        
+        solicitudes = SolicitudDeIntercambio.objects.filter(
+            estado='FALLIDA',
+        ).order_by('fecha_del_intercambio').distinct()
+        serializer = SolicitudDeIntercambioSerializer(solicitudes, many=True)
+        return Response(serializer.data, status=HTTP_200_OK)
+        
         
 
 class VentasView(APIView):

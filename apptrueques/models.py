@@ -14,7 +14,7 @@ class Usuario(AbstractUser):
     sucursal_favorita = models.ForeignKey(Sucursal, related_name="usuarios", on_delete=models.CASCADE, null=True)
     username = models.CharField(max_length=150, unique=False)
     email = models.EmailField(unique=True)
-    avatar = models.ImageField(upload_to="images", default="userNoProfilePicture.jpg") 
+    avatar = models.ImageField(upload_to="images", default="/images/userNoProfilePicture.jpg") 
     bloqueado = models.BooleanField(default=False)
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username', 'password', 'fecha_de_nacimiento']
@@ -66,7 +66,7 @@ class Publicacion(models.Model):
     descripcion = models.TextField()
     categoria = models.ForeignKey(Categoria, on_delete=models.CASCADE)
     sucursal_destino = models.ForeignKey(Sucursal, related_name="publicaciones", on_delete=models.CASCADE, blank=True, null=True)
-    imagen = models.ImageField(upload_to="images", default="noPostImage.png")
+    imagen = models.ImageField(upload_to="images", default="/images/noPostImage.jpg")
     fecha_fin_promocion = models.DateTimeField(blank=True, null=True)
     def __str__(self):
         return self.titulo
