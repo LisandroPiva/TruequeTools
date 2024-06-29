@@ -436,22 +436,20 @@ class SolicitudView(APIView):
             return Response({'error': 'Publicación no encontrada.'}, status=HTTP_404_NOT_FOUND)
          
     def delete(self, request, solicitud_id):
-        print("Entrando al método delete")
         try:
-            solicitud = get_object_or_404(SolicitudDeIntercambio, id=solicitud_id, usuario=request.user)
-            print(solicitud)
+            print(solicitud_id)
+            print(request.user)
+            solicitud = get_object_or_404(SolicitudDeIntercambio, id=solicitud_id)
             user = solicitud.publicacion_a_intercambiar.usuario_propietario
+            print(user)
             contenido = f"El usuario {request.user.username} ha rechazado tu solicitud de intercambio :("
-            notificacion = Notificacion.objects.create(contenido=contenido)
-            user.notificaciones.add(notificacion)
-            user.save()
+            notificacion = Notificacion.objects.create(contenido=contenido, usuario=user)
+            print(notificacion)
             solicitud.delete()
-            print("Solicitud eliminada correctamente")
             return Response(status=HTTP_204_NO_CONTENT)
         except SolicitudDeIntercambio.DoesNotExist:
             return Response({'error': 'Solicitud no encontrada.'}, status=HTTP_404_NOT_FOUND)
         except Exception as e:
-            print("Error:", e)
             return Response({'error': 'Ha ocurrido un error al procesar la solicitud.'}, status=HTTP_500_INTERNAL_SERVER_ERROR)
 
     def patch(self, request, solicitud_id):
@@ -467,20 +465,24 @@ class SolicitudView(APIView):
         data = {'estado': 'PENDIENTE'}
         serializer = SolicitudDeIntercambioSerializer(solicitud, data=data, partial=True)
         if serializer.is_valid():
+            contenido = f"El usuario {request.user.username} aceptó tu solicitud de intercambio! Puedes verla en tu historial"
+            usernotif = solicitud.publicacion_a_intercambiar.usuario_propietario
+            notif = Notificacion.objects.create(contenido=contenido, usuario=usernotif)
+            print(notif)
             serializer.save()
             print(f"Estado actualizado a: {solicitud.estado}")
 
             # Eliminar otras solicitudes para la misma publicación deseada
-            otras_solicitudes = SolicitudDeIntercambio.objects.filter(
-                publicacion_deseada=solicitud.publicacion_deseada,
-                estado='ESPERA'
-            ).exclude(id=solicitud_id)
+            # otras_solicitudes = SolicitudDeIntercambio.objects.filter(
+            #     publicacion_deseada=solicitud.publicacion_deseada,
+            #     estado='ESPERA'
+            # ).exclude(id=solicitud_id)
 
-            otras_solicitudes_count = otras_solicitudes.count()
-            print(f"Número de otras solicitudes a eliminar: {otras_solicitudes_count}")
+            # otras_solicitudes_count = otras_solicitudes.count()
+            # print(f"Número de otras solicitudes a eliminar: {otras_solicitudes_count}")
 
-            otras_solicitudes.delete()
-            print("Otras solicitudes eliminadas")
+            # otras_solicitudes.delete()
+            # print("Otras solicitudes eliminadas")
 
             return Response(status=HTTP_204_NO_CONTENT)
 
@@ -824,3 +826,31 @@ class CommentAdminView(APIView):
         else:
             # Si el usuario no es administrador, devolver un error de autorización
             return Response({"error": "No tienes permiso para eliminar este comentario."}, status=HTTP_403_FORBIDDEN)
+
+
+
+@permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication])
+class NotificacionView(APIView):
+    def get(self, request):
+        try:    
+            notificaciones = Notificacion.objects.filter(
+                usuario=request.user,
+            ).order_by('-fecha')
+            serializer = NotificacionSerializer(notificaciones, many=True)
+            return Response(serializer.data, status=HTTP_200_OK)
+        except (Notificacion.DoesNotExist):
+            return Response(status=HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+    def patch(self, request, notificacion_id):
+        try:
+            notif = get_object_or_404(Notificacion, pk=notificacion_id)
+            data = {'leida': 'True'}
+            serializer = NotificacionSerializer(notif, data=data, partial=True)
+            if serializer.is_valid():
+                print(serializer)
+                serializer.save()
+                return Response(status=HTTP_200_OK)
+        except(Notificacion.DoesNotExist):
+            return Response(status=HTTP_400_BAD_REQUEST)

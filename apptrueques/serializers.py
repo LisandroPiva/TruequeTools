@@ -53,12 +53,11 @@ class VentaSerializer(serializers.ModelSerializer):
 class NotificacionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notificacion
-        fields ="__all__"
+        fields = "__all__"
 
 class UsuarioSerializer(serializers.ModelSerializer):
-    sucursal_favorita = SucursalSerializer(read_only=True)    
+    sucursal_favorita = SucursalSerializer(read_only=True)
     notificaciones = NotificacionSerializer(many=True, read_only=True)  
-
     class Meta:
         model = Usuario
         fields = ('id', 'username', 'email', 'fecha_de_nacimiento', 'sucursal_favorita', 'reputacion', 'is_staff', 'bloqueado', 'avatar', 'notificaciones',  )

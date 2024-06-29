@@ -61,8 +61,8 @@ urlpatterns = [
     path('api/employee/<int:employee_id>/detail/', EmployeeDetailView.as_view(), name="employee_detail"),  # Updated path for detail view
     path('api/misProductos/', MisProductosView.as_view(), name="user_products"),
     path('api/create-solicitud/', SolicitudView.as_view(), name="enviar_solicitud"),
-    path('api/solicitudes/<int:solicitud_id>/', SolicitudView.as_view(), name="aceptar_solicitud"),
-    path('api/solicitudes/<int:solicitud_id>/', SolicitudView.as_view(), name='delete_solicitud'),
+    path('api/mis-solicitudes/<int:solicitud_id>/', SolicitudView.as_view(), name="aceptar_solicitud"),
+    path('api/mis-solicitudes/<int:solicitud_id>/', SolicitudView.as_view(), name='delete_solicitud'),
     path('api/mis-solicitudes/', SolicitudView.as_view(), name='ver_solicitudes'),
 
     path('api/employee/solicitudes/success/', TruequesExitososView.as_view(), name="trueques_exitosos"),
@@ -73,13 +73,17 @@ urlpatterns = [
     path('api/employee/solicitudes/<int:solicitud_id>/', SolicitudesEmployeeView.as_view(), name='solicitud_detail'),
 
     path('api/employee/solicitudes/<int:solicitud_id>/ventas/', VentasView.as_view(), name="registrar_venta"),
-    path('api/employee/solicitudes/<int:solicitud_id>/ventas/', VentasView.as_view(), name="ver_venta"), ##falta el boton "ver ventas" en el front, que le pegue a este ruta con una solicitud GET
-    
+    path('api/employee/solicitudes/<int:solicitud_id>/ventas/', VentasView.as_view(), name="ver_venta"), 
 
 
     path('api/post/<int:publicacion_id>/solicitudes/', MisSolicitudesView.as_view(), name="mis_solicitudes"),
     path('api/solicitudes/<int:solicitud_id>/cancel/', CancelarSolicitudView.as_view(), name="cencelar_solicitud"),
-    path('api/historial/', HistorialDeSolicitudesView.as_view(), name="historial")
+    path('api/historial/', HistorialDeSolicitudesView.as_view(), name="historial"),
+    path('api/mis-notificaciones/', NotificacionView.as_view(), name="ver_notificaciones"),
+    path('api/mis-notificaciones/<int:notificacion_id>/', NotificacionView.as_view(), name="marcar_leida")
+
+    
+
 
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)       
