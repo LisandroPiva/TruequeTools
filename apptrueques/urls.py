@@ -32,7 +32,7 @@ urlpatterns = [
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/adminview/sucursales/add', CreateSucursalView.as_view(), name="add-sucursal"),
     path('api/adminview/sucursales/', CreateSucursalView.as_view(), name="search-sucursal"),
-    path('api/adminview/post/<int:publicacion_id>', PostDetailAdminView.as_view(), name="delete-post"),
+    path('api/adminview/post/<int:publicacion_id>/', PostDetailAdminView.as_view(), name="delete-post"),
 
 
     path('api/sucursal/<int:sucursal_id>/', SucursalInfo.as_view(), name="sucursal-info"),

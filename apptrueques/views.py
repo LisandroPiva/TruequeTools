@@ -260,6 +260,10 @@ class PostDetailAdminView(APIView):
         if email == 'admin@truequetools.com':
             try:
                 publicacion = Publicacion.objects.get(pk=publicacion_id)
+                for sol in publicacion.solicitudes_recibidas.all():
+                    usernotif = sol.publicacion_a_intercambiar.usuario_propietario
+                    contenido = f"El usuario {sol.publicacion_deseada.usuario_propietario} rechazó tu solicitud de intercambio :("
+                    notif = Notificacion.objects.create(contenido=contenido, usuario=usernotif)
                 publicacion.delete()
                 return Response(status=HTTP_200_OK)
             except Publicacion.DoesNotExist:
@@ -462,7 +466,7 @@ class SolicitudView(APIView):
             solicitud = get_object_or_404(SolicitudDeIntercambio, id=solicitud_id)
             user = solicitud.publicacion_a_intercambiar.usuario_propietario
             print(user)
-            contenido = f"El usuario {request.user.username} ha rechazado tu solicitud de intercambio :("
+            contenido = f"El usuario {request.user.username} ha rechazado tu solicitud de intercambio"
             notificacion = Notificacion.objects.create(contenido=contenido, usuario=user)
             print(notificacion)
             solicitud.delete()
@@ -862,19 +866,20 @@ class NotificacionView(APIView):
         except (Notificacion.DoesNotExist):
             return Response(status=HTTP_500_INTERNAL_SERVER_ERROR)
         
-
-    def patch(self, request, notificacion_id):
+    def patch(self, request, notificacion_id=None):
         try:
-            notif = get_object_or_404(Notificacion, pk=notificacion_id)
-            data = {'leida': 'True'}
-            print(notif.leida)
-            if (notif.leida):
-                print("Hola")
-                data = {'leida':'False'}
-            serializer = NotificacionSerializer(notif, data=data, partial=True)
-            if serializer.is_valid():
-                print(serializer)
-                serializer.save()
+            if notificacion_id is None:
+                # Marcar todas las notificaciones como leídas
+                Notificacion.objects.filter(usuario=request.user, leida=False).update(leida=True)
                 return Response(status=HTTP_200_OK)
-        except(Notificacion.DoesNotExist):
+            else:
+                notif = get_object_or_404(Notificacion, pk=notificacion_id)
+                data = {'leida': not notif.leida}
+                serializer = NotificacionSerializer(notif, data=data, partial=True)
+                if serializer.is_valid():
+                    serializer.save()
+                    return Response(status=HTTP_200_OK)
+                else:
+                    return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
+        except Notificacion.DoesNotExist:
             return Response(status=HTTP_400_BAD_REQUEST)
