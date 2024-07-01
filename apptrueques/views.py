@@ -247,6 +247,26 @@ class PostDetailAdminView(APIView):
         else:
             return Response({'detail:':'no tienes permisos para entrar al detalle.'})
         
+    def delete(self, request, publicacion_id):
+        email = request.headers.get('X-User-Email')
+        if not email:
+            return Response({"error": "No se proporcionó el email del usuario."}, status=HTTP_400_BAD_REQUEST)
+        print(email)
+        try:
+            empleado = Empleado.objects.get(email=email)
+        except Empleado.DoesNotExist:
+            return Response({"error": "No se encontró un administrador asociado a este email."}, status=HTTP_404_NOT_FOUND)
+        
+        if email == 'admin@truequetools.com':
+            try:
+                publicacion = Publicacion.objects.get(pk=publicacion_id)
+                publicacion.delete()
+                return Response(status=HTTP_200_OK)
+            except Publicacion.DoesNotExist:
+                return Response({"detail": "La publicación que deseas ver no está disponible"}, status=HTTP_404_NOT_FOUND)
+        else:
+            return Response({'detail:':'no tienes permisos para entrar al detalle.'})
+        
 
 @permission_classes([AllowAny])
 class EmployeeDetailView(APIView):
@@ -847,6 +867,10 @@ class NotificacionView(APIView):
         try:
             notif = get_object_or_404(Notificacion, pk=notificacion_id)
             data = {'leida': 'True'}
+            print(notif.leida)
+            if (notif.leida):
+                print("Hola")
+                data = {'leida':'False'}
             serializer = NotificacionSerializer(notif, data=data, partial=True)
             if serializer.is_valid():
                 print(serializer)
