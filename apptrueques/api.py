@@ -53,19 +53,22 @@ class PublicacionViewSet(viewsets.ModelViewSet):
     authentication_classes = [TokenAuthentication]
 
     def get_queryset(self):
-        # Obtener las IDs de las publicaciones deseadas con al menos una solicitud en estado diferente de "Espera"
-        publicaciones_deseadas_no_espera = SolicitudDeIntercambio.objects.exclude(estado='ESPERA').values_list('publicacion_deseada', flat=True).distinct()
+    # Obtener IDs de las publicaciones con al menos una solicitud en estado "PENDIENTE", "EXITOSA" o "FALLIDA"
+        solicitudes_activas = SolicitudDeIntercambio.objects.filter(
+            Q(estado='PENDIENTE') | Q(estado='EXITOSA') | Q(estado='FALLIDA')
+        )
 
-        # Obtener las IDs de las publicaciones a intercambiar con al menos una solicitud en estado diferente de "Espera"
-        publicaciones_a_intercambiar_no_espera = SolicitudDeIntercambio.objects.exclude(estado='ESPERA').values_list('publicacion_a_intercambiar', flat=True).distinct()
+        # Obtener IDs únicas de publicaciones en solicitudes activas
+        publicaciones_con_solicitudes_activas = set()
+        for solicitud in solicitudes_activas:
+            publicaciones_con_solicitudes_activas.add(solicitud.publicacion_deseada_id)
+            publicaciones_con_solicitudes_activas.add(solicitud.publicacion_a_intercambiar_id)
 
-        # Combinar ambas listas de IDs
-        publicaciones_no_espera = set(publicaciones_deseadas_no_espera).union(set(publicaciones_a_intercambiar_no_espera))
+        # Obtener todas las publicaciones que no están en la lista de IDs de publicaciones con solicitudes activas
+        queryset = Publicacion.objects.exclude(id__in=publicaciones_con_solicitudes_activas)
 
-        # Obtener todas las publicaciones excepto aquellas que están en la lista de IDs combinada
-        queryset = Publicacion.objects.exclude(id__in=publicaciones_no_espera)
+        return queryset.order_by('-fecha')
 
-        return queryset.order_by('-fecha').distinct()
 
 class ComentarioViewSet(viewsets.ModelViewSet):
     queryset = Comentario.objects.all()

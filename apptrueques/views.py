@@ -301,8 +301,10 @@ class PostDetailAdminView(APIView):
                 publicacion = Publicacion.objects.get(pk=publicacion_id)
                 for sol in publicacion.solicitudes_recibidas.all():
                     usernotif = sol.publicacion_a_intercambiar.usuario_propietario
-                    contenido = f"El usuario {sol.publicacion_deseada.usuario_propietario} rechazó tu solicitud de intercambio :("
+                    contenido = f"Se rechazó tu solicitud de intercambio para la publicacion '{sol.publicacion_deseada.titulo}' porque el propietario ha infringido las normas."
                     notif = Notificacion.objects.create(contenido=contenido, usuario=usernotif)
+                    sol.estado='RECHAZADA'
+                    sol.save()
                 publicacion.delete()
                 return Response(status=HTTP_200_OK)
             except Publicacion.DoesNotExist:
@@ -336,14 +338,6 @@ class SucursalInfo(APIView):
             sucursal = Sucursal.objects.get(pk=sucursal_id)
             serializer = SucursalSerializer(sucursal)
             return Response(serializer.data, status=HTTP_200_OK)
-        except Sucursal.DoesNotExist:
-            return Response({"detail": "No existe sucursal con ese id"}, status=HTTP_404_NOT_FOUND)
-
-    def delete(self, request, sucursal_id):
-        try:
-            sucursal = Sucursal.objects.get(pk=sucursal_id)
-            sucursal.delete()
-            return Response(status=HTTP_204_NO_CONTENT)
         except Sucursal.DoesNotExist:
             return Response({"detail": "No existe sucursal con ese id"}, status=HTTP_404_NOT_FOUND)
         
@@ -441,17 +435,16 @@ class MisProductosView(APIView):
     def get(self, request):
         user = request.user
 
-        # Obtener IDs de las publicaciones deseadas con al menos una solicitud en estado diferente de "Espera"
-        publicaciones_deseadas_no_espera = SolicitudDeIntercambio.objects.exclude(estado='ESPERA').values_list('publicacion_deseada', flat=True).distinct()
+        # Obtener IDs de las publicaciones deseadas con todas las solicitudes en estado "ESPERA" o "RECHAZADA"
+        solicitudes_espera_rechazada = SolicitudDeIntercambio.objects.filter(
+            estado__in=['ESPERA', 'RECHAZADA']
+        ).values_list('publicacion_deseada', flat=True).distinct()
 
-        # Obtener IDs de las publicaciones a intercambiar con al menos una solicitud en estado diferente de "Espera"
-        publicaciones_a_intercambiar_no_espera = SolicitudDeIntercambio.objects.exclude(estado='ESPERA').values_list('publicacion_a_intercambiar', flat=True).distinct()
-
-        # Combinar ambas listas de IDs
-        publicaciones_no_espera = set(publicaciones_deseadas_no_espera).union(set(publicaciones_a_intercambiar_no_espera))
-
-        # Filtrar las publicaciones del usuario excluyendo aquellas en la lista de IDs combinada
-        queryset = Publicacion.objects.filter(usuario_propietario=user).exclude(id__in=publicaciones_no_espera)
+        # Filtrar las publicaciones del usuario que están en la lista de IDs combinada
+        queryset = Publicacion.objects.filter(
+            usuario_propietario=user,
+            id__in=solicitudes_espera_rechazada
+        )
 
         serializer = PublicacionSerializer(queryset, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
@@ -502,22 +495,7 @@ class SolicitudView(APIView):
         except Publicacion.DoesNotExist:
             return Response({'error': 'Publicación no encontrada.'}, status=HTTP_404_NOT_FOUND)
          
-    def delete(self, request, solicitud_id):
-        try:
-            print(solicitud_id)
-            print(request.user)
-            solicitud = get_object_or_404(SolicitudDeIntercambio, id=solicitud_id)
-            user = solicitud.publicacion_a_intercambiar.usuario_propietario
-            print(user)
-            contenido = f"El usuario {request.user.username} ha rechazado tu solicitud de intercambio"
-            notificacion = Notificacion.objects.create(contenido=contenido, usuario=user)
-            print(notificacion)
-            solicitud.delete()
-            return Response(status=HTTP_204_NO_CONTENT)
-        except SolicitudDeIntercambio.DoesNotExist:
-            return Response({'error': 'Solicitud no encontrada.'}, status=HTTP_404_NOT_FOUND)
-        except Exception as e:
-            return Response({'error': 'Ha ocurrido un error al procesar la solicitud.'}, status=HTTP_500_INTERNAL_SERVER_ERROR)
+  
 
     def patch(self, request, solicitud_id):
         print("Entrando al método patch")
@@ -529,27 +507,44 @@ class SolicitudView(APIView):
             print("Solicitud no encontrada")
             return Response(status=HTTP_404_NOT_FOUND)
 
-        data = {'estado': 'PENDIENTE'}
-        serializer = SolicitudDeIntercambioSerializer(solicitud, data=data, partial=True)
-        if serializer.is_valid():
+        accion = request.data.get('accion', '').lower()
+
+        if accion == 'aceptar':
+            estado_nuevo = 'PENDIENTE'
             contenido = f"El usuario {request.user.username} aceptó tu solicitud de intercambio! Puedes verla en tu historial"
             usernotif = solicitud.publicacion_a_intercambiar.usuario_propietario
             notif = Notificacion.objects.create(contenido=contenido, usuario=usernotif)
             print(notif)
+        elif accion == 'rechazar':
+            estado_nuevo = 'RECHAZADA'  
+            contenido = f"El usuario {request.user.username} rechazó tu solicitud de intercambio."
+            usernotif = solicitud.publicacion_a_intercambiar.usuario_propietario
+            notif = Notificacion.objects.create(contenido=contenido, usuario=usernotif)
+
+
+        data = {'estado': estado_nuevo}
+        serializer = SolicitudDeIntercambioSerializer(solicitud, data=data, partial=True)
+
+        if serializer.is_valid():
             serializer.save()
             print(f"Estado actualizado a: {solicitud.estado}")
 
-            # Eliminar otras solicitudes para la misma publicación deseada
-            # otras_solicitudes = SolicitudDeIntercambio.objects.filter(
-            #     publicacion_deseada=solicitud.publicacion_deseada,
-            #     estado='ESPERA'
-            # ).exclude(id=solicitud_id)
+            if accion == 'aceptar':
+                # Eliminar otras solicitudes para la misma publicación deseada
+                otras_solicitudes = SolicitudDeIntercambio.objects.filter(
+                    publicacion_deseada=solicitud.publicacion_deseada,
+                    estado='ESPERA'
+                ).exclude(id=solicitud_id)
 
-            # otras_solicitudes_count = otras_solicitudes.count()
-            # print(f"Número de otras solicitudes a eliminar: {otras_solicitudes_count}")
-
-            # otras_solicitudes.delete()
-            # print("Otras solicitudes eliminadas")
+                for otra_solicitud in otras_solicitudes:
+                    otra_solicitud.estado = 'RECHAZADA'
+                    otra_solicitud.save()
+                    
+                    # Crear notificación para cada solicitud rechazada
+                    contenido_rechazo = f"El usuario {request.user.username} rechazó tu solicitud de intercambio."
+                    usernotif_rechazo = otra_solicitud.usuario_propietario
+                    notif_rechazo = Notificacion.objects.create(contenido=contenido_rechazo, usuario=usernotif_rechazo)
+                    print(notif_rechazo)
 
             return Response(status=HTTP_204_NO_CONTENT)
 
@@ -590,15 +585,14 @@ class HistorialDeSolicitudesView(APIView):
     def get(self, request):
         user = request.user
         # Obtener las solicitudes basadas en las publicaciones del usuario
-        solicitudes = get_solicitudes_no_espera(user)
-        # Serializar las solicitudes
+        solicitudes = get_solicitudes_no_espera(user).exclude(estado='RECHAZADA').order_by('-fecha')
         serializer = SolicitudDeIntercambioSerializer(solicitudes, many=True)
         return Response(serializer.data)
 
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 class CancelarSolicitudView(APIView):
-    def delete(self, request, solicitud_id):
+    def patch(self, request, solicitud_id):
         try:
             solicitud = SolicitudDeIntercambio.objects.get(id=solicitud_id)
         except SolicitudDeIntercambio.DoesNotExist:
@@ -607,8 +601,15 @@ class CancelarSolicitudView(APIView):
 
         now_local = timezone.localtime(timezone.now())
         if solicitud.fecha_del_intercambio - now_local > timedelta(hours=24):
-            solicitud.delete()
-            print("Solicitud eliminada de la base de datos")
+            solicitud.estado = 'ESPERA'
+            solicitud.save()
+            if request.user == solicitud.publicacion_a_intercambiar.usuario_propietario:
+                usernotif = solicitud.publicacion_deseada.usuario_propietario
+            else:
+                usernotif = solicitud.publicacion_a_intercambiar.usuario_propietario
+            fecha_formateada = solicitud.fecha.strftime('%m-%d %H:%M:%S')
+            contenido = f"El usuario {request.user} ha cancelado el intercambio del dia {fecha_formateada}."
+            notif = Notificacion.objects.create(contenido=contenido, usuario=usernotif)
             return Response(status=HTTP_204_NO_CONTENT)
         else:
             return Response(status=HTTP_409_CONFLICT) 
@@ -851,11 +852,18 @@ class PostListAdmin(APIView):
         except Empleado.DoesNotExist:
             return Response({"error": "No se encontró un empleado asociado a este email."}, status=HTTP_404_NOT_FOUND)
         
+        solicitudes_activas = SolicitudDeIntercambio.objects.filter(
+            Q(estado='PENDIENTE') | Q(estado='EXITOSA') | Q(estado='FALLIDA')
+        )
 
-        publicaciones_deseadas_no_espera = SolicitudDeIntercambio.objects.exclude(estado='ESPERA').values_list('publicacion_deseada', flat=True).distinct()
-        publicaciones_a_intercambiar_no_espera = SolicitudDeIntercambio.objects.exclude(estado='ESPERA').values_list('publicacion_a_intercambiar', flat=True).distinct()
-        publicaciones_no_espera = set(publicaciones_deseadas_no_espera).union(set(publicaciones_a_intercambiar_no_espera))
-        queryset = Publicacion.objects.exclude(id__in=publicaciones_no_espera)
+        # Obtener IDs únicas de publicaciones en solicitudes activas
+        publicaciones_con_solicitudes_activas = set()
+        for solicitud in solicitudes_activas:
+            publicaciones_con_solicitudes_activas.add(solicitud.publicacion_deseada_id)
+            publicaciones_con_solicitudes_activas.add(solicitud.publicacion_a_intercambiar_id)
+
+        # Obtener todas las publicaciones que no están en la lista de IDs de publicaciones con solicitudes activas
+        queryset = Publicacion.objects.exclude(id__in=publicaciones_con_solicitudes_activas)
 
         serializer = PublicacionSerializer(queryset, many=True)
         return Response(serializer.data, status=HTTP_200_OK)

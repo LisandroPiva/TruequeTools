@@ -94,6 +94,7 @@ class SolicitudDeIntercambio(models.Model):
         ('PENDIENTE', 'Pendiente'),
         ('EXITOSA', 'Exitosa'),
         ('FALLIDA', 'Fallida'),
+        ('RECHAZADA', 'Rechazada'),
     )
     estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='ESPERA')
     def __str__(self):
