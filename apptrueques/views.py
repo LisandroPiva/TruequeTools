@@ -578,7 +578,8 @@ class MisSolicitudesView(APIView):
         publicacion = get_object_or_404(Publicacion, pk=publicacion_id)
         solicitudes = SolicitudDeIntercambio.objects.filter(
             publicacion_deseada=publicacion,
-            estado='ESPERA'
+            estado='ESPERA',
+            publicacion_a_intercambiar__usuario_propietario__bloqueado=False
         ).order_by('fecha_del_intercambio')
         
         serializer = SolicitudDeIntercambioSerializer(solicitudes, many=True)
