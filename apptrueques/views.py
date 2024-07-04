@@ -99,6 +99,17 @@ class ProfileView(APIView):
         serializer = UsuarioSerializer(instance=request.user)
         return Response({"Usuario logueado": serializer.data}, status=HTTP_200_OK)
     
+    def patch(self, request):
+        try:
+            user = request.user
+            serializer = UsuarioSerializer(user, data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(status=HTTP_200_OK)
+        except Usuario.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+
+    
 
 
 @authentication_classes([TokenAuthentication])
@@ -130,12 +141,40 @@ class CreateSucursalView(APIView):
     def get(self, request):
         query = request.query_params.get('q', None)
         if query:
-            sucursales = Sucursal.objects.filter(nombre__icontains=query)
+            sucursales = Sucursal.objects.filter(nombre__icontains=query, borrada=False)
         else:
-            sucursales = Sucursal.objects.all()
+            sucursales = Sucursal.objects.filter(borrada=False)
         serializer = SucursalSerializer(sucursales, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
+    
+    def patch(self, request, sucursal_id):
+        try:
+            sucursal = Sucursal.objects.get(pk=sucursal_id)
+        except Sucursal.DoesNotExist:
+            return Response({'error': 'Sucursal not found.'}, status=HTTP_404_NOT_FOUND)
         
+        total_sucursales = Sucursal.objects.filter(borrada=False).count()
+   
+        if total_sucursales <= 1:
+            return Response({'error': 'Cannot delete the only remaining Sucursal.'}, status=HTTP_400_BAD_REQUEST)
+        
+        # Marcar la sucursal como borrada
+        sucursal.borrada = True
+        sucursal.save()
+
+        # Reasignar empleados a otra sucursal
+        empleados = Empleado.objects.filter(sucursal_de_trabajo=sucursal)
+        otra_sucursal = Sucursal.objects.exclude(pk=sucursal_id, borrada=True).first()
+
+        if otra_sucursal:
+            for empleado in empleados:
+                empleado.sucursal_de_trabajo = otra_sucursal
+                empleado.save()
+
+        return Response({'status': 'Sucursal marked as borrada and employees reassigned.'}, status=HTTP_200_OK)
+
+
+
 
 class EmployeeView(APIView):
     def post(self, request):
@@ -334,12 +373,13 @@ class PostComments(APIView):
     
     
 class EmployeesList(APIView):
-    def get(self, request   ):
+    def get(self, request):
         query = request.query_params.get('q', None)
-        if query is not None:
-            employees = Empleado.objects.filter(email__icontains=query)
+        if query:
+            employees = Empleado.objects.filter(email__icontains=query).exclude(email="admin@truequetools.com")
+            print(employees)
         else:
-            employees = Empleado.objects.all()
+            employees = Empleado.objects.exclude(email="admin@truequetools.com")
         serializer = EmpleadoSerializer(employees, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
     
@@ -453,6 +493,9 @@ class SolicitudView(APIView):
                 fecha_del_intercambio = fecha,
             )
             serializer = SolicitudDeIntercambioSerializer(solicitud)
+            userNotif = solicitud.publicacion_deseada.usuario_propietario 
+            contenido = f"El usuario {request.user.username} te ha ofrecido su {solicitud.publicacion_a_intercambiar.titulo} a cambio de tu {solicitud.publicacion_deseada.titulo}"
+            notificacion = Notificacion.objects.create(contenido=contenido, usuario=userNotif)
             print(serializer.data)
             return Response(serializer.data, status=HTTP_201_CREATED)
     
