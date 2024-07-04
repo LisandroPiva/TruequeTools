@@ -434,20 +434,26 @@ class UserView(APIView):
 class MisProductosView(APIView):
     def get(self, request):
         user = request.user
+        try:
+            # Obtener IDs de las publicaciones con al menos una solicitud en estado "PENDIENTE", "EXITOSA" o "FALLIDA"
+            solicitudes_activas = SolicitudDeIntercambio.objects.filter(
+                Q(estado='PENDIENTE') | Q(estado='EXITOSA') | Q(estado='FALLIDA')
+            )
 
-        # Obtener IDs de las publicaciones deseadas con todas las solicitudes en estado "ESPERA" o "RECHAZADA"
-        solicitudes_espera_rechazada = SolicitudDeIntercambio.objects.filter(
-            estado__in=['ESPERA', 'RECHAZADA']
-        ).values_list('publicacion_deseada', flat=True).distinct()
+            # Obtener IDs únicas de publicaciones en solicitudes activas
+            publicaciones_con_solicitudes_activas = set()
+            for solicitud in solicitudes_activas:
+                publicaciones_con_solicitudes_activas.add(solicitud.publicacion_deseada_id)
+                publicaciones_con_solicitudes_activas.add(solicitud.publicacion_a_intercambiar_id)
 
-        # Filtrar las publicaciones del usuario que están en la lista de IDs combinada
-        queryset = Publicacion.objects.filter(
-            usuario_propietario=user,
-            id__in=solicitudes_espera_rechazada
-        )
+            # Obtener todas las publicaciones del usuario actual que no están en la lista de IDs de publicaciones con solicitudes activas
+            queryset = Publicacion.objects.filter(usuario_propietario=user).exclude(id__in=publicaciones_con_solicitudes_activas).order_by('-fecha')
+            serializer = PublicacionSerializer(queryset, many=True)
+            
+            return Response(serializer.data, status=HTTP_200_OK)
 
-        serializer = PublicacionSerializer(queryset, many=True)
-        return Response(serializer.data, status=HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=HTTP_400_BAD_REQUEST)
 
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
@@ -607,7 +613,10 @@ class CancelarSolicitudView(APIView):
                 usernotif = solicitud.publicacion_deseada.usuario_propietario
             else:
                 usernotif = solicitud.publicacion_a_intercambiar.usuario_propietario
-            fecha_formateada = solicitud.fecha.strftime('%m-%d %H:%M:%S')
+            fecha = solicitud.fecha_del_intercambio - timedelta(hours=3)
+
+            fecha_formateada = fecha.strftime("%m/%d %H:%Mhs")
+
             contenido = f"El usuario {request.user} ha cancelado el intercambio del dia {fecha_formateada}."
             notif = Notificacion.objects.create(contenido=contenido, usuario=usernotif)
             return Response(status=HTTP_204_NO_CONTENT)

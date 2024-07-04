@@ -87,6 +87,10 @@ class SucursalViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny]     
     serializer_class = SucursalSerializer
 
+    def get_queryset(self):
+        queryset = Sucursal.objects.exclude(borrada=True)
+        return queryset
+
 class CategoriaViewSet(viewsets.ModelViewSet):
     queryset = Categoria.objects.all()
     permission_classes = [permissions.AllowAny]    
