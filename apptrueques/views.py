@@ -98,16 +98,19 @@ class ProfileView(APIView):
     def get(self, request):
         serializer = UsuarioSerializer(instance=request.user)
         return Response({"Usuario logueado": serializer.data}, status=HTTP_200_OK)
-    
+
     def patch(self, request):
         try:
             user = request.user
-            serializer = UsuarioSerializer(user, data=request.data)
+            serializer = UsuarioSerializer(user, data=request.data, partial=True)  # Use partial=True for partial updates
             if serializer.is_valid():
                 serializer.save()
-                return Response(status=HTTP_200_OK)
+                return Response(serializer.data, status=HTTP_200_OK)
+            return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
         except Usuario.DoesNotExist:
-            return Response(status=HTTP_404_NOT_FOUND)
+            return Response({'error': 'Usuario no encontrado'}, status=HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'error': str(e)}, status=HTTP_500_INTERNAL_SERVER_ERROR)
 
     
 
@@ -170,6 +173,12 @@ class CreateSucursalView(APIView):
             for empleado in empleados:
                 empleado.sucursal_de_trabajo = otra_sucursal
                 empleado.save()
+
+        users_sin_sucursal = Usuario.objects.filter(sucursal_favorita=sucursal)
+
+        for user in users_sin_sucursal:
+            user.sucursal_favorita = None
+            user.save()
 
         return Response({'status': 'Sucursal marked as borrada and employees reassigned.'}, status=HTTP_200_OK)
 
@@ -548,7 +557,8 @@ class SolicitudView(APIView):
                     
                     # Crear notificación para cada solicitud rechazada
                     contenido_rechazo = f"El usuario {request.user.username} rechazó tu solicitud de intercambio."
-                    usernotif_rechazo = otra_solicitud.usuario_propietario
+                    usernotif_rechazo = otra_solicitud.publicacion_a_intercambiar.usuario_propietario
+                    print(usernotif_rechazo)
                     notif_rechazo = Notificacion.objects.create(contenido=contenido_rechazo, usuario=usernotif_rechazo)
                     print(notif_rechazo)
 
@@ -944,3 +954,38 @@ class NotificacionView(APIView):
                     return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
         except Notificacion.DoesNotExist:
             return Response(status=HTTP_400_BAD_REQUEST)
+
+
+class EstadisticasView(APIView):
+    def get(self, request):
+        fecha_ini = request.query_params.get('fecha1')
+        fecha_fin = request.query_params.get('fecha2')
+
+        # Intentar parsear las fechas si se proporcionan
+        if fecha_ini and fecha_fin:
+            try:
+                fecha_ini = parse_datetime(fecha_ini)
+                fecha_fin = parse_datetime(fecha_fin)
+            except ValueError:
+                return Response(
+                    {"error": "Formato de fecha no válido"},
+                    status=HTTP_400_BAD_REQUEST
+                )
+
+            if fecha_ini > fecha_fin:
+                return Response(
+                    {"error": "La fecha inicial no puede ser mayor que la fecha final"},
+                    status=HTTP_400_BAD_REQUEST
+                )
+
+            solicitudes = SolicitudDeIntercambio.objects.filter(
+                estado='EXITOSA',
+                fecha_del_intercambio__range=(fecha_ini, fecha_fin)
+            ).order_by('publicacion_deseada__sucursal_destino', 'fecha_del_intercambio')
+        else:
+            solicitudes = SolicitudDeIntercambio.objects.filter(
+                estado='EXITOSA'
+            ).order_by('publicacion_deseada__sucursal_destino', 'fecha_del_intercambio')
+
+        serializer = SolicitudDeIntercambioSerializer(solicitudes, many=True)
+        return Response(serializer.data, status=HTTP_200_OK)

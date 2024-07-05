@@ -84,7 +84,8 @@ urlpatterns = [
     path('api/solicitudes/<int:solicitud_id>/cancel/', CancelarSolicitudView.as_view(), name="cencelar_solicitud"),
     path('api/historial/', HistorialDeSolicitudesView.as_view(), name="historial"),
     path('api/mis-notificaciones/', NotificacionView.as_view(), name="ver_notificaciones"),
-    path('api/mis-notificaciones/<int:notificacion_id>/', NotificacionView.as_view(), name="marcar_leida")
+    path('api/mis-notificaciones/<int:notificacion_id>/', NotificacionView.as_view(), name="marcar_leida"),
+    path('api/adminview/stats/', EstadisticasView.as_view(), name="estadisticas")
 
     
 
