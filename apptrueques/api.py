@@ -66,6 +66,8 @@ class PublicacionViewSet(viewsets.ModelViewSet):
 
         # Obtener todas las publicaciones que no están en la lista de IDs de publicaciones con solicitudes activas
         queryset = Publicacion.objects.exclude(id__in=publicaciones_con_solicitudes_activas)
+        queryset = queryset.filter(usuario_propietario__bloqueado=False)
+
 
         return queryset.order_by('-fecha')
 

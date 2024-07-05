@@ -6,7 +6,6 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.shortcuts import get_object_or_404
 from .serializers import *
 from rest_framework.authtoken.models import Token
-from jwt import decode
 from .models import Usuario, Empleado
 from django.contrib.auth import authenticate
 from rest_framework.authentication import TokenAuthentication
@@ -18,7 +17,7 @@ from .api import *
 from .utils import *
 from datetime import datetime, timedelta, time
 from django.db import transaction
-
+from django.db.models import Q
 
 @permission_classes([AllowAny])
 class RegisterView(APIView):
@@ -103,21 +102,25 @@ class ProfileView(APIView):
         user = request.user
         print(request.data)
 
-        if (request.data.get('new_password') is not None and len(request.data.get('new_password', '')) < 6):
-            
-            print("HOLITA")
-            return Response(status=HTTP_406_NOT_ACCEPTABLE)
-        
+        # Validar la longitud de la nueva contraseña si se proporciona
+        new_password = request.data.get('new_password', None)
+        confirm_password = request.data.get('confirm_password', None)
 
+        if new_password is not None:
+            if len(new_password) < 6:
+                return Response({"error": "La nueva contraseña debe tener al menos 6 caracteres."}, status=HTTP_406_NOT_ACCEPTABLE)
+        
+            if new_password != confirm_password:
+                return Response({"error": "Las contraseñas no coinciden."}, status=HTTP_409_CONFLICT)
+
+        # Serializar y validar los datos
         serializer = UsuarioSerializer(user, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=HTTP_200_OK)
+        else:
+            return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
         
-        
-
-    
-
 
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
@@ -171,19 +174,20 @@ class CreateSucursalView(APIView):
 
         # Reasignar empleados a otra sucursal
         empleados = Empleado.objects.filter(sucursal_de_trabajo=sucursal)
-        otra_sucursal = Sucursal.objects.exclude(pk=sucursal_id, borrada=True).first()
-
+        otra_sucursal = Sucursal.objects.exclude(pk=sucursal_id).exclude(borrada=True).first()
+        print(otra_sucursal)
         if otra_sucursal:
             for empleado in empleados:
                 empleado.sucursal_de_trabajo = otra_sucursal
                 empleado.save()
-
+        
         users_sin_sucursal = Usuario.objects.filter(sucursal_favorita=sucursal)
 
         for user in users_sin_sucursal:
-            user.sucursal_favorita = None
+            user.sucursal_favorita = otra_sucursal
+            contenido = f"Tu sucursal favorita ha cerrado, ahora es {otra_sucursal}, pero puedes elegir otra en tu perfil."
+            notif = Notificacion.objects.create(contenido=contenido, usuario=user)
             user.save()
-
         return Response({'status': 'Sucursal marked as borrada and employees reassigned.'}, status=HTTP_200_OK)
 
 
@@ -265,7 +269,8 @@ class ReplyView(APIView):
             return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
 
 
-
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
 class PostDetailView(APIView):
     def get(self, request, publicacion_id):
         try:
@@ -275,6 +280,21 @@ class PostDetailView(APIView):
             return Response(serializer.data, status=HTTP_200_OK)
         except Publicacion.DoesNotExist:
             return Response({"detail": "La publicación que deseas ver no está disponible"}, status=HTTP_404_NOT_FOUND)
+
+    def delete(self, request, publicacion_id):
+        try:
+            publicacion = Publicacion.objects.get(pk=publicacion_id)
+            for sol in publicacion.solicitudes_recibidas.all():
+                usernotif = sol.publicacion_a_intercambiar.usuario_propietario
+                contenido = f"El usuario {request.user} ha rechazado tu solicitud de intercambio"
+                notif = Notificacion.objects.create(contenido=contenido, usuario=usernotif)
+                sol.estado='RECHAZADA'
+                sol.save()
+                publicacion.delete()
+                return Response(status=HTTP_200_OK)
+        except Publicacion.DoesNotExist:
+                return Response({"detail": "La publicación que deseas ver no está disponible"}, status=HTTP_404_NOT_FOUND)
+       
 
 
 class PostDetailAdminView(APIView):
@@ -573,8 +593,8 @@ class SolicitudView(APIView):
     
     def get(self, request):
         solicitudes = SolicitudDeIntercambio.objects.filter(
-            publicacion_a_intercambiar__usuario_propietario=request.user,
-            estado='ESPERA'
+        Q(estado='ESPERA') | Q(estado='RECHAZADA'),
+        publicacion_a_intercambiar__usuario_propietario=request.user,
         ).order_by('-fecha_del_intercambio')
         
         serializer = SolicitudDeIntercambioSerializer(solicitudes, many=True)
@@ -591,9 +611,9 @@ class MisSolicitudesView(APIView):
         print("ID:",publicacion_id)
         publicacion = get_object_or_404(Publicacion, pk=publicacion_id)
         solicitudes = SolicitudDeIntercambio.objects.filter(
-            publicacion_deseada=publicacion,
-            estado='ESPERA',
-            publicacion_a_intercambiar__usuario_propietario__bloqueado=False
+        estado='ESPERA',
+        publicacion_deseada=publicacion,
+        publicacion_a_intercambiar__usuario_propietario__bloqueado=False
         ).order_by('fecha_del_intercambio')
         
         serializer = SolicitudDeIntercambioSerializer(solicitudes, many=True)
@@ -622,7 +642,7 @@ class CancelarSolicitudView(APIView):
 
         now_local = timezone.localtime(timezone.now())
         if solicitud.fecha_del_intercambio - now_local > timedelta(hours=24):
-            solicitud.estado = 'ESPERA'
+            solicitud.estado = 'RECHAZADA'
             solicitud.save()
             if request.user == solicitud.publicacion_a_intercambiar.usuario_propietario:
                 usernotif = solicitud.publicacion_deseada.usuario_propietario

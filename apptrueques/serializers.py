@@ -68,16 +68,36 @@ class UsuarioSerializer(serializers.ModelSerializer):
         read_only_fields = ('reputacion', 'is_staff')
         extra_kwargs = {
             'password': {'write_only': True},
-            'sucursal_favorita': {'required': False}
+            'username': {'required': False},  # Permitir actualizar username de forma opcional
+            'email': {'required': False},     # Permitir actualizar email de forma opcional
+            'avatar': {'required': False}     # Permitir actualizar avatar de forma opcional
         }
 
     def update(self, instance, validated_data):
         new_password = validated_data.pop('new_password', None)
         if new_password:
             instance.set_password(new_password)
+
+        # Actualizar sucursal_favorita si se proporciona en validated_data
         sucursal_favorita = validated_data.get('sucursal_favorita', None)
-        if sucursal_favorita:
+        if sucursal_favorita is not None:
             instance.sucursal_favorita = sucursal_favorita
+
+        # Actualizar username si se proporciona en validated_data
+        username = validated_data.get('username', None)
+        if username:
+            instance.username = username
+
+        # Actualizar email si se proporciona en validated_data
+        email = validated_data.get('email', None)
+        if email:
+            instance.email = email
+
+        # Actualizar avatar si se proporciona en validated_data
+        avatar = validated_data.get('avatar', None)
+        if avatar is not None:
+            instance.avatar = avatar
+
         return super().update(instance, validated_data)
 
 

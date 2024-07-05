@@ -85,7 +85,8 @@ urlpatterns = [
     path('api/historial/', HistorialDeSolicitudesView.as_view(), name="historial"),
     path('api/mis-notificaciones/', NotificacionView.as_view(), name="ver_notificaciones"),
     path('api/mis-notificaciones/<int:notificacion_id>/', NotificacionView.as_view(), name="marcar_leida"),
-    path('api/adminview/stats/', EstadisticasView.as_view(), name="estadisticas")
+    path('api/adminview/stats/', EstadisticasView.as_view(), name="estadisticas"),
+    path('api/mis-publicaciones/<int:publicacion_id>/', PostDetailView.as_view(), name="borrar_post"),
 
     
 
