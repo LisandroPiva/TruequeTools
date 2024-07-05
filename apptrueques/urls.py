@@ -87,6 +87,7 @@ urlpatterns = [
     path('api/mis-notificaciones/<int:notificacion_id>/', NotificacionView.as_view(), name="marcar_leida"),
     path('api/adminview/stats/', EstadisticasView.as_view(), name="estadisticas"),
     path('api/mis-publicaciones/<int:publicacion_id>/', PostDetailView.as_view(), name="borrar_post"),
+    path('api/mis-publicaciones/<int:publicacion_id>/destacar/', DestacarProductoView.as_view(), name="destacar_producto"),
 
     
 

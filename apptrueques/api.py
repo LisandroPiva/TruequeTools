@@ -55,10 +55,10 @@ class PublicacionViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
     # Obtener IDs de las publicaciones con al menos una solicitud en estado "PENDIENTE", "EXITOSA" o "FALLIDA"
         solicitudes_activas = SolicitudDeIntercambio.objects.filter(
-            Q(estado='PENDIENTE') | Q(estado='EXITOSA') | Q(estado='FALLIDA')
+        Q(estado='PENDIENTE') | Q(estado='EXITOSA') | Q(estado='FALLIDA')
         )
 
-        # Obtener IDs únicas de publicaciones en solicitudes activas
+    # Obtener IDs únicas de publicaciones en solicitudes activas
         publicaciones_con_solicitudes_activas = set()
         for solicitud in solicitudes_activas:
             publicaciones_con_solicitudes_activas.add(solicitud.publicacion_deseada_id)
@@ -68,8 +68,15 @@ class PublicacionViewSet(viewsets.ModelViewSet):
         queryset = Publicacion.objects.exclude(id__in=publicaciones_con_solicitudes_activas)
         queryset = queryset.filter(usuario_propietario__bloqueado=False)
 
+        # Anotar si la publicación tiene fecha_fin_promocion distinta de null
+        queryset = queryset.annotate(
+            tiene_fecha_fin_promocion=Q(fecha_fin_promocion__isnull=False)
+        )
 
-        return queryset.order_by('-fecha')
+        # Ordenar primero por publicaciones con fecha_fin_promocion distinta de null y luego por fecha
+        queryset = queryset.order_by('-tiene_fecha_fin_promocion', '-fecha')
+
+        return queryset
 
 
 class ComentarioViewSet(viewsets.ModelViewSet):

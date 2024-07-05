@@ -106,7 +106,7 @@ class ProfileView(APIView):
         new_password = request.data.get('new_password', None)
         confirm_password = request.data.get('confirm_password', None)
 
-        if new_password is not None:
+        if new_password is not None and new_password != '':
             if len(new_password) < 6:
                 return Response({"error": "La nueva contraseña debe tener al menos 6 caracteres."}, status=HTTP_406_NOT_ACCEPTABLE)
         
@@ -288,12 +288,12 @@ class PostDetailView(APIView):
                 usernotif = sol.publicacion_a_intercambiar.usuario_propietario
                 contenido = f"El usuario {request.user} ha rechazado tu solicitud de intercambio"
                 notif = Notificacion.objects.create(contenido=contenido, usuario=usernotif)
-                sol.estado='RECHAZADA'
+                sol.estado = 'RECHAZADA'
                 sol.save()
-                publicacion.delete()
-                return Response(status=HTTP_200_OK)
+            publicacion.delete()
+            return Response(status=HTTP_200_OK)
         except Publicacion.DoesNotExist:
-                return Response({"detail": "La publicación que deseas ver no está disponible"}, status=HTTP_404_NOT_FOUND)
+            return Response({"detail": "La publicación que deseas ver no está disponible"}, status=HTTP_404_NOT_FOUND)
        
 
 
@@ -596,7 +596,6 @@ class SolicitudView(APIView):
         Q(estado='ESPERA') | Q(estado='RECHAZADA'),
         publicacion_a_intercambiar__usuario_propietario=request.user,
         ).order_by('-fecha_del_intercambio')
-        
         serializer = SolicitudDeIntercambioSerializer(solicitudes, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
         
@@ -1013,3 +1012,17 @@ class EstadisticasView(APIView):
 
         serializer = SolicitudDeIntercambioSerializer(solicitudes, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
+
+
+@permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication])
+class DestacarProductoView(APIView):
+    def patch(self, request, publicacion_id):
+        print("HOLITA")
+        publicacion = get_object_or_404(Publicacion, pk=publicacion_id)
+        today = datetime.today()
+        future_date = today + timedelta(days=7)
+        publicacion.fecha_fin_promocion = future_date
+        publicacion.save()
+        serializer = PublicacionSerializer(publicacion)
+        return Response(serializer.data)
