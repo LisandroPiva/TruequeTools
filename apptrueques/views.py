@@ -100,17 +100,21 @@ class ProfileView(APIView):
         return Response({"Usuario logueado": serializer.data}, status=HTTP_200_OK)
 
     def patch(self, request):
-        try:
-            user = request.user
-            serializer = UsuarioSerializer(user, data=request.data, partial=True)  # Use partial=True for partial updates
-            if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data, status=HTTP_200_OK)
-            return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
-        except Usuario.DoesNotExist:
-            return Response({'error': 'Usuario no encontrado'}, status=HTTP_404_NOT_FOUND)
-        except Exception as e:
-            return Response({'error': str(e)}, status=HTTP_500_INTERNAL_SERVER_ERROR)
+        user = request.user
+        print(request.data)
+
+        if (request.data.get('new_password') is not None and len(request.data.get('new_password', '')) < 6):
+            
+            print("HOLITA")
+            return Response(status=HTTP_406_NOT_ACCEPTABLE)
+        
+
+        serializer = UsuarioSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=HTTP_200_OK)
+        
+        
 
     
 

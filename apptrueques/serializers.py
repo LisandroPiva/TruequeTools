@@ -1,5 +1,7 @@
 from rest_framework import serializers
 from .models import *
+from django.contrib.auth.hashers import make_password
+
 
 class SucursalSerializer(serializers.ModelSerializer):
     class Meta:
@@ -56,19 +58,33 @@ class NotificacionSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 class UsuarioSerializer(serializers.ModelSerializer):
-    sucursal_favorita = SucursalSerializer(read_only=True)
-    notificaciones = NotificacionSerializer(many=True, read_only=True)  
+    sucursal_favorita = serializers.PrimaryKeyRelatedField(queryset=Sucursal.objects.all(), required=False)
+    notificaciones = NotificacionSerializer(many=True, read_only=True)
+    new_password = serializers.CharField(write_only=True, required=False)  # Campo para manejar la nueva contraseña
+  
     class Meta:
         model = Usuario
-        fields = ('id', 'username', 'email', 'fecha_de_nacimiento', 'sucursal_favorita', 'reputacion', 'is_staff', 'bloqueado', 'avatar', 'notificaciones',  )
+        fields = ('id', 'username', 'email', 'fecha_de_nacimiento', 'sucursal_favorita', 'reputacion', 'is_staff', 'bloqueado', 'avatar', 'notificaciones', 'new_password')
         read_only_fields = ('reputacion', 'is_staff')
-        extra_kwargs = {'password': {'write_only': True}}
+        extra_kwargs = {
+            'password': {'write_only': True},
+            'sucursal_favorita': {'required': False}
+        }
+
+    def update(self, instance, validated_data):
+        new_password = validated_data.pop('new_password', None)
+        if new_password:
+            instance.set_password(new_password)
+        sucursal_favorita = validated_data.get('sucursal_favorita', None)
+        if sucursal_favorita:
+            instance.sucursal_favorita = sucursal_favorita
+        return super().update(instance, validated_data)
+
 
 class CategoriaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Categoria
         fields = '__all__'
-
 
 
 
