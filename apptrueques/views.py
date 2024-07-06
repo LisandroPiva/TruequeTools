@@ -1014,16 +1014,37 @@ class EstadisticasView(APIView):
         return Response(serializer.data, status=HTTP_200_OK)
 
 
-
 @permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 class DestacarProductoView(APIView):
     def patch(self, request, publicacion_id):
-        print("HOLITA")
         publicacion = get_object_or_404(Publicacion, pk=publicacion_id)
-        today = datetime.today()
-        future_date = today + timedelta(days=7)
+
+        if publicacion.titulo == 'ultima demo':
+            today = datetime.today()
+            future_date = today + timedelta(seconds=20)
+        else:
+            today = datetime.today()
+            future_date = today + timedelta(days=7)
+        
         publicacion.fecha_fin_promocion = future_date
         publicacion.save()
+        
         serializer = PublicacionSerializer(publicacion)
         return Response(serializer.data)
+
+
+@permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication])
+class  ChequearPromosView(APIView):
+    def patch(self, request):
+        publicaciones = Publicacion.objects.filter(fecha_fin_promocion__isnull=False)
+        today = timezone.now()
+        for publicacion in publicaciones:
+            if publicacion.fecha_fin_promocion < today:
+                publicacion.fecha_fin_promocion = None
+                user = publicacion.usuario_propietario
+                contenido = f"La promoción de tu publicación {publicacion.titulo} se ha vencido!"
+                Notificacion.objects.create(usuario=user, contenido=contenido)
+                publicacion.save()
+        return Response({"message": "Publicaciones actualizadas correctamente"})
