@@ -3,7 +3,8 @@ from rest_framework import viewsets, permissions
 from .serializers import *
 from rest_framework.authentication import TokenAuthentication
 from django.db.models import Q, Count
-
+from rest_framework.decorators import action
+from rest_framework.response import Response
 from .models import Empleado
 
 class SolicitudDeIntercambioViewSet(viewsets.ModelViewSet):
@@ -97,8 +98,15 @@ class SucursalViewSet(viewsets.ModelViewSet):
     serializer_class = SucursalSerializer
 
     def get_queryset(self):
-        queryset = Sucursal.objects.exclude(borrada=True)
-        return queryset
+        # Por defecto, excluye las sucursales borradas
+        return Sucursal.objects.exclude(borrada=True)
+
+    @action(detail=False, methods=['get'], permission_classes=[permissions.AllowAny])
+    def todas(self, request):
+        # Esta acción personalizada devuelve todas las sucursales, incluyendo las borradas
+        queryset = Sucursal.objects.all()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
 class CategoriaViewSet(viewsets.ModelViewSet):
     queryset = Categoria.objects.all()

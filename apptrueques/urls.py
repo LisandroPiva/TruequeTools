@@ -33,7 +33,6 @@ urlpatterns = [
     path('api/adminview/sucursales/add', CreateSucursalView.as_view(), name="add-sucursal"),
     path('api/adminview/sucursales/', CreateSucursalView.as_view(), name="search-sucursal"),
     path('api/adminview/sucursales/<int:sucursal_id>/', CreateSucursalView.as_view(), name="delete-sucursal"),
-
     path('api/adminview/post/<int:publicacion_id>/', PostDetailAdminView.as_view(), name="delete-post"),
 
 

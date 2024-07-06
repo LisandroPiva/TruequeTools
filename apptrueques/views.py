@@ -983,8 +983,10 @@ class EstadisticasView(APIView):
     def get(self, request):
         fecha_ini = request.query_params.get('fecha1')
         fecha_fin = request.query_params.get('fecha2')
-
-        # Intentar parsear las fechas si se proporcionan
+        suc = request.query_params.get('sucursal')
+        
+        filters = {'estado': 'EXITOSA'}
+        
         if fecha_ini and fecha_fin:
             try:
                 fecha_ini = parse_datetime(fecha_ini)
@@ -1001,17 +1003,16 @@ class EstadisticasView(APIView):
                     status=HTTP_400_BAD_REQUEST
                 )
 
-            solicitudes = SolicitudDeIntercambio.objects.filter(
-                estado='EXITOSA',
-                fecha_del_intercambio__range=(fecha_ini, fecha_fin)
-            ).order_by('publicacion_deseada__sucursal_destino', 'fecha_del_intercambio')
-        else:
-            solicitudes = SolicitudDeIntercambio.objects.filter(
-                estado='EXITOSA'
-            ).order_by('publicacion_deseada__sucursal_destino', 'fecha_del_intercambio')
-
+            filters['fecha_del_intercambio__range'] = (fecha_ini, fecha_fin)
+        
+        if suc:
+            filters['publicacion_deseada__sucursal_destino_id'] = suc
+        
+        solicitudes = SolicitudDeIntercambio.objects.filter(**filters).order_by('publicacion_deseada__sucursal_destino', 'fecha_del_intercambio')
+        
         serializer = SolicitudDeIntercambioSerializer(solicitudes, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
+
 
 
 @permission_classes([IsAuthenticated])
