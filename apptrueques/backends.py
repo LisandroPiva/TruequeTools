@@ -5,7 +5,7 @@ from apptrueques.models import Empleado
 class EmpleadoBackend(BaseBackend):
     def authenticate(self, request, email=None, password=None, **kwargs):
         try:
-            print("HOLAAAAAAAAAAAA")
+            print("HOLA")
             empleado = Empleado.objects.get(email=email)
             if empleado.check_password(password):
                 return empleado
